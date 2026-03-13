@@ -14,6 +14,6 @@ public class LocalPointDlqPublisher implements PointDlqPublisher {
     @Override
     public void sendToDlq(PointCommand command, String reason) {
         logger.error("[DLQ_PUBLISHED] Key: {}, Reason: {} - Message routed to DLQ.",
-                command.getPointKey(), reason);
+                command.pointKey(), reason);
     }
 }

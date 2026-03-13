@@ -8,23 +8,25 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
- * 포인트 거래 이력 엔티티
- * 모든 포인트 변동의 최종 근거가 되며, pointKey를 통해 멱등성을 보장함
- */
 @Entity
 @Getter
+@Table(name = "point_transaction", indexes = {
+        @Index(name = "idx_tx__member_id_seq", columnList = "memberId, sequenceNum"),
+        @Index(name = "idx_tx__point_key", columnList = "pointKey", unique = true), // 글로벌 멱등성 보장
+        @Index(name = "idx_tx__original_key", columnList = "originalPointKey")      // 원본 추적용 인덱스
+})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PointTransaction extends BaseAuditEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Long memberId;
     private Long amount;
 
-    @Column(unique = true)
-    private String pointKey;
+    @Column(nullable = false)
+    private String pointKey; // 이번 요청의 고유 키 (멱등성 기준)
+
+    private String originalPointKey; // 원본 적립/사용의 키 (추적용)
 
     private Long sequenceNum;
 
@@ -34,17 +36,27 @@ public class PointTransaction extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     private PointSource source;
 
+    private String orderId;
     private String description;
 
     @Builder
-    public PointTransaction(Long memberId, Long amount, String pointKey, Long sequenceNum,
-                            PointTransactionType type, PointSource source, String description) {
+    public PointTransaction(Long memberId,
+                            Long amount,
+                            String pointKey,
+                            String originalPointKey,
+                            Long sequenceNum,
+                            PointTransactionType type,
+                            PointSource source,
+                            String orderId,
+                            String description) {
         this.memberId = memberId;
         this.amount = amount;
         this.pointKey = pointKey;
+        this.originalPointKey = originalPointKey;
         this.sequenceNum = sequenceNum;
         this.type = type;
         this.source = source;
+        this.orderId = orderId;
         this.description = description;
     }
 }

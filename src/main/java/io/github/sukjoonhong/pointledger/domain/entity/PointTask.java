@@ -17,7 +17,7 @@ public class PointTask extends BaseAuditEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY) // Reference to the ledger
+    @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transaction_id", nullable = false, unique = true)
     private PointTransaction transaction;
 
@@ -25,12 +25,33 @@ public class PointTask extends BaseAuditEntity {
     @Column(nullable = false)
     private TaskStatus status;
 
+    @Column(nullable = false)
+    private Integer retryCount;
+
+    @Column(length = 1000)
+    private String lastErrorMessage;
+
     @Builder
     public PointTask(PointTransaction transaction) {
         this.transaction = transaction;
         this.status = TaskStatus.READY;
+        this.retryCount = 0;
     }
 
-    public void complete() { this.status = TaskStatus.COMPLETED; }
-    public void fail() { this.status = TaskStatus.FAILED; }
+    public void complete() {
+        this.status = TaskStatus.COMPLETED;
+    }
+
+    public void fail(String errorMessage) {
+        this.status = TaskStatus.FAILED;
+        this.retryCount++;
+        this.lastErrorMessage = errorMessage;
+    }
+
+    /**
+     * 재시도가 가능한 상태인지 확인합니다.
+     */
+    public boolean isRetryable(int maxLimit) {
+        return this.retryCount < maxLimit;
+    }
 }

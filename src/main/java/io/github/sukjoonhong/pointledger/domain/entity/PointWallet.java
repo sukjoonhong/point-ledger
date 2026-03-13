@@ -1,10 +1,9 @@
 package io.github.sukjoonhong.pointledger.domain.entity;
 
+import io.github.sukjoonhong.pointledger.domain.exception.PointErrorCode;
+import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Getter
@@ -15,30 +14,59 @@ import lombok.NoArgsConstructor;
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class PointWallet extends BaseAuditEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "member_id", nullable = false)
+    @Column(nullable = false, unique = true)
     private Long memberId;
 
-    @Column(name = "total_balance", nullable = false)
-    private Long totalBalance;
+    @Column(nullable = false)
+    private Long balance;
 
+    @Column(nullable = false)
     private Long lastSequenceNum;
 
-    @Version
-    private Long version;
+    /**
+     * Applies transaction to wallet balance and updates sequence
+     */
+    public void apply(PointTransaction transaction, Long maxHoldingLimit) {
+        validateSequence(transaction.getSequenceNum());
 
-    @Builder
-    public PointWallet(Long memberId, Long totalBalance) {
-        this.memberId = memberId;
-        this.totalBalance = (totalBalance != null) ? totalBalance : 0L;
+        switch (transaction.getType()) {
+            case EARN, CANCEL_USE -> {
+                validateMaxHoldingLimit(transaction.getAmount(), maxHoldingLimit);
+                this.balance += transaction.getAmount();
+            }
+            case USE, CANCEL_EARN -> {
+                validateBalance(transaction.getAmount());
+                this.balance -= transaction.getAmount();
+            }
+        }
+
+        this.lastSequenceNum = transaction.getSequenceNum();
     }
 
-    public void updateSequence(Long newSequenceNum) {
-        this.lastSequenceNum = newSequenceNum;
+    private void validateSequence(long incomingSeq) {
+        if (incomingSeq <= this.lastSequenceNum) {
+            throw new PointLedgerException(PointErrorCode.INVALID_SEQUENCE,
+                    "Current: " + this.lastSequenceNum + ", Incoming: " + incomingSeq);
+        }
+    }
+
+    private void validateMaxHoldingLimit(long amountToAdd, long maxLimit) {
+        if (this.balance + amountToAdd > maxLimit) {
+            throw new PointLedgerException(PointErrorCode.EXCEED_MAX_HOLDING_LIMIT, "Limit: " + maxLimit);
+        }
+    }
+
+    private void validateBalance(long amountToDeduct) {
+        if (this.balance < amountToDeduct) {
+            throw new PointLedgerException(PointErrorCode.INSUFFICIENT_BALANCE, "Member: " + this.memberId);
+        }
     }
 }

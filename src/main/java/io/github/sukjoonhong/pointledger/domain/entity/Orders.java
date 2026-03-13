@@ -40,12 +40,4 @@ public class Orders extends BaseAuditEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
-
-    @Builder
-    public Orders(Long memberId, String orderNo, Long totalAmount, OrderStatus status) {
-        this.memberId = memberId;
-        this.orderNo = orderNo;
-        this.totalAmount = totalAmount;
-        this.status = (status != null) ? status : OrderStatus.PENDING;
-    }
 }

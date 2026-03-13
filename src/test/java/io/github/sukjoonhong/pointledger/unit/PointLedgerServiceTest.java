@@ -1,10 +1,11 @@
-package io.github.sukjoonhong.pointledger.service;
+package io.github.sukjoonhong.pointledger.unit;
 
 import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
 import io.github.sukjoonhong.pointledger.domain.entity.PointTask;
 import io.github.sukjoonhong.pointledger.domain.entity.PointTransaction;
 import io.github.sukjoonhong.pointledger.repository.PointTaskRepository;
 import io.github.sukjoonhong.pointledger.repository.PointTransactionRepository;
+import io.github.sukjoonhong.pointledger.service.PointLedgerService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,6 +59,7 @@ class PointLedgerServiceTest {
         // given
         PointCommand command = PointCommand.builder()
                 .pointKey("evt-duplicate")
+                .amount(10L)
                 .build();
 
         given(transactionRepository.existsByPointKey("evt-duplicate")).willReturn(true);

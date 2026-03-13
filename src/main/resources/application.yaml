@@ -1,3 +1,17 @@
 spring:
   application:
     name: point-ledger
+  profiles:
+    active: local
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+point-ledger:
+  policy:
+    min-earn-limit: 1
+    max-earn-limit: 100000
+    max-free-point-holding-limit: 1000000

@@ -27,9 +27,4 @@ public class Member extends BaseAuditEntity {
 
     @Column(nullable = false, unique = true)
     private String loginId;
-
-    @Builder
-    public Member(String loginId) {
-        this.loginId = loginId;
-    }
 }

@@ -1,6 +1,7 @@
 [versions]
 spring-boot = "3.4.3"
 lombok = "1.18.34"
+jqwik = "1.9.3"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -15,6 +16,7 @@ h2 = { module = "com.h2database:h2" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+jqwik = { group = "net.jqwik", name = "jqwik", version.ref = "jqwik" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

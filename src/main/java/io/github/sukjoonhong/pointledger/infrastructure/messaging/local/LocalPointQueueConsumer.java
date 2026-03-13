@@ -1,8 +1,8 @@
 package io.github.sukjoonhong.pointledger.infrastructure.messaging.local;
 
+import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
 import io.github.sukjoonhong.pointledger.infrastructure.messaging.PointDlqPublisher;
 import io.github.sukjoonhong.pointledger.subscriber.PointMessageSubscriber;
-import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -30,7 +30,7 @@ public class LocalPointQueueConsumer {
                     break;
                 } catch (Exception e) {
                     if (command != null) {
-                        logger.error("[PROCESSING_FAILED] Key: {} - Routing to DLQ.", command.getPointKey());
+                        logger.error("[PROCESSING_FAILED] Key: {} - Routing to DLQ.", command.pointKey());
                         dlqPublisher.sendToDlq(command, e.getMessage());
                     }
                 }

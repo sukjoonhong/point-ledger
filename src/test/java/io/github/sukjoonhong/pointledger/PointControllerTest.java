@@ -2,7 +2,7 @@ package io.github.sukjoonhong.pointledger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
-import io.github.sukjoonhong.pointledger.infrastructure.messaging.local.LocalPointQueueManager;
+import io.github.sukjoonhong.pointledger.infrastructure.messaging.PointMessagePublisher;
 import io.github.sukjoonhong.pointledger.web.v1.PointController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,10 +28,10 @@ class PointControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private LocalPointQueueManager queueManager;
+    private PointMessagePublisher messagePublisher;
 
     @Test
-    @DisplayName("이벤트 인큐 요청 시 큐에 데이터를 넣고 202 응답을 내려야 한다")
+    @DisplayName("이벤트 인큐 요청 시 퍼블리셔를 통해 데이터를 발행하고 202 응답을 내려야 한다")
     void enqueueEventReturnsAccepted() throws Exception {
         // given
         PointCommand command = PointCommand.builder()
@@ -40,7 +40,7 @@ class PointControllerTest {
                 .amount(500L)
                 .build();
 
-        doNothing().when(queueManager).offer(any(PointCommand.class));
+        doNothing().when(messagePublisher).publish(any(PointCommand.class));
 
         // when & then
         mockMvc.perform(post("/v1/points/enqueue")
@@ -48,6 +48,6 @@ class PointControllerTest {
                         .content(objectMapper.writeValueAsString(command)))
                 .andExpect(status().isAccepted());
 
-        verify(queueManager).offer(any(PointCommand.class));
+        verify(messagePublisher).publish(any(PointCommand.class));
     }
 }

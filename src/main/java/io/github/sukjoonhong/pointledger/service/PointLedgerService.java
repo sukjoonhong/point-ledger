@@ -23,8 +23,8 @@ public class PointLedgerService implements PointMessageSubscriber {
     @Override
     @Transactional
     public void onMessage(PointCommand command) {
-        if (isDuplicateEvent(command.getPointKey())) {
-            logger.info("Duplicate pointKey skipped: {}", command.getPointKey());
+        if (isDuplicateEvent(command.pointKey())) {
+            logger.info("Duplicate pointKey skipped: {}", command.pointKey());
             return;
         }
 
@@ -43,6 +43,6 @@ public class PointLedgerService implements PointMessageSubscriber {
                 .build());
 
         logger.info("Ledger and Task stored successfully. Key: {}, TransactionId: {}",
-                command.getPointKey(), transaction.getId());
+                command.pointKey(), transaction.getId());
     }
 }
