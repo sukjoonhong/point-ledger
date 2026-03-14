@@ -1,15 +1,7 @@
 package io.github.sukjoonhong.pointledger.domain.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import lombok.*;
 
 /**
  * 외부 회원 서비스의 데이터를 미러링하는 엔티티
@@ -19,6 +11,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @Table(name = "member")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class Member extends BaseAuditEntity {
 
     @Id

@@ -1,16 +1,14 @@
 package io.github.sukjoonhong.pointledger.unit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.sukjoonhong.pointledger.domain.entity.PointAsset;
-import io.github.sukjoonhong.pointledger.domain.entity.PointTransaction;
-import io.github.sukjoonhong.pointledger.domain.entity.PointUsageDetail;
-import io.github.sukjoonhong.pointledger.domain.entity.PointWallet;
+import io.github.sukjoonhong.pointledger.domain.entity.*;
 import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import io.github.sukjoonhong.pointledger.domain.type.PointAssetStatus;
 import io.github.sukjoonhong.pointledger.repository.PointAssetRepository;
 import io.github.sukjoonhong.pointledger.repository.PointOutboxRepository;
 import io.github.sukjoonhong.pointledger.repository.PointUsageDetailRepository;
 import io.github.sukjoonhong.pointledger.service.PointUseService;
+import io.github.sukjoonhong.pointledger.service.event.PointOutboxCapturedEvent;
 import io.github.sukjoonhong.pointledger.support.BusinessTimeProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 
 import java.time.OffsetDateTime;
@@ -38,6 +37,7 @@ class PointUseServiceTest {
     @Mock private ObjectMapper objectMapper;
     @Mock private PointUsageDetailRepository usageDetailRepository;
     @Mock private PointOutboxRepository outboxRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private BusinessTimeProvider timeProvider;
 
     @InjectMocks
@@ -107,29 +107,48 @@ class PointUseServiceTest {
 
     @Test
     @DisplayName("사용 취소: 자산이 이미 만료되었다면 보상 적립(Outbox)을 발행한다")
-    void handleCancel_Compensation() {
+    void handleCancel_Compensation() throws Exception {
         // given
         PointTransaction tx = createCancelTx(500L);
         PointUsageDetail detail = createDetail(1L, 500L);
+        OffsetDateTime now = OffsetDateTime.now();
 
-        // 만료된 자산 생성 (현재 시간보다 이전)
+        // 1. 만료된 자산 생성
         PointAsset expiredAsset = PointAsset.builder()
                 .id(1L)
                 .amount(1000L)
                 .remainingAmount(500L)
                 .status(PointAssetStatus.ACTIVE)
-                .expirationDate(now.minusDays(1)) // 어제 만료됨
+                .expirationDate(now.minusDays(1))
                 .build();
 
-        given(usageDetailRepository.findAllForRefund(eq(tx.getOrderId()), any(Sort.class))).willReturn(List.of(detail));
+        // 2. Outbox Mocking (NPE 방지 및 ID 주입)
+        PointOutbox mockOutbox = PointOutbox.builder()
+                .id(777L)
+                .status(PointOutbox.OutboxStatus.PENDING)
+                .build();
+
+        given(usageDetailRepository.findAllForRefund(eq(tx.getOrderId()), any(Sort.class)))
+                .willReturn(List.of(detail));
         given(assetRepository.findById(1L)).willReturn(Optional.of(expiredAsset));
+        given(timeProvider.nowOffset()).willReturn(now);
+
+        // [핵심] Outbox 저장 시 객체를 반환해줘야 getId()가 작동함
+        given(outboxRepository.save(any(PointOutbox.class))).willReturn(mockOutbox);
+        given(objectMapper.writeValueAsString(any())).willReturn("{}");
 
         // when
-        pointUseService.handleCancel(PointWallet.builder().memberId(memberId).build(), tx);
+        pointUseService.handleCancel(PointWallet.builder().memberId(1L).build(), tx);
 
         // then
-        verify(outboxRepository, times(1)).save(any()); // 보상 적립 Outbox 저장 확인
-        verify(assetRepository, never()).save(expiredAsset); // 만료 자산에는 restore 안함
+        // 1. DB 저장 확인
+        verify(outboxRepository, times(1)).save(any());
+
+        // 2. 이벤트 전파 확인
+        verify(eventPublisher, times(1)).publishEvent(any(PointOutboxCapturedEvent.class));
+
+        // 3. 만료 자산은 건드리지 않았는지 확인
+        verify(assetRepository, never()).save(expiredAsset);
     }
 
     // Helper Methods

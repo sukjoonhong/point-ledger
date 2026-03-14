@@ -1,4 +1,4 @@
-package io.github.sukjoonhong.pointledger.service;
+package io.github.sukjoonhong.pointledger.service.external;
 
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;

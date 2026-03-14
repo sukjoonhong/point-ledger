@@ -12,6 +12,7 @@ public enum PointErrorCode {
     EXCEED_MAX_HOLDING_LIMIT("W002", "Total balance exceeds maximum holding limit.", HttpStatus.UNPROCESSABLE_ENTITY),
     INVALID_SEQUENCE("W003", "Invalid sequence: Event already processed.", HttpStatus.CONFLICT),
     SEQUENCE_GAP_DETECTED("W004", "Sequence gap detected during replay.", HttpStatus.CONFLICT),
+    WALLET_UNDER_RECOVERY("W005", "Wallet recovery in progress. Please try again later.", HttpStatus.UNPROCESSABLE_ENTITY),
 
     // 2. Asset (A): 개별 자산 관련
     INVALID_EARN_AMOUNT("A001", "Earn amount is out of policy range.", HttpStatus.BAD_REQUEST),

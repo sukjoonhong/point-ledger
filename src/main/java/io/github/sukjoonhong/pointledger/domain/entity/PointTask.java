@@ -32,7 +32,8 @@ public class PointTask extends BaseAuditEntity {
     private String lastErrorMessage;
 
     @Builder
-    public PointTask(PointTransaction transaction) {
+    public PointTask(Long id, PointTransaction transaction) {
+        this.id = id;
         this.transaction = transaction;
         this.status = TaskStatus.READY;
         this.retryCount = 0;

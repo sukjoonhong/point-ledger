@@ -65,13 +65,13 @@ public class PointAsset {
             PointTransaction transaction,
             Long minLimit,
             Long maxLimit,
-            Integer expiryDays,
+            Integer expireDays,
             BusinessTimeProvider timeProvider
     ) {
         OffsetDateTime now = timeProvider.nowOffset();
 
         validateEarnAmount(transaction.getAmount(), minLimit, maxLimit);
-        validateExpirationRange(expiryDays, now);
+        validateExpirationRange(expireDays, now);
 
         return PointAsset.builder()
                 .walletId(wallet.getId())
@@ -82,16 +82,16 @@ public class PointAsset {
                 .remainingAmount(transaction.getAmount())
                 .status(PointAssetStatus.ACTIVE)
                 .source(transaction.getSource())
-                .expirationDate(now.plusDays(expiryDays))
+                .expirationDate(now.plusDays(expireDays))
                 .seqNum(transaction.getSequenceNum())
                 .build();
     }
 
-    private static void validateExpirationRange(Integer expiryDays, OffsetDateTime now) {
-        OffsetDateTime targetDate = now.plusDays(expiryDays);
+    private static void validateExpirationRange(Integer expireDays, OffsetDateTime now) {
+        OffsetDateTime targetDate = now.plusDays(expireDays);
         OffsetDateTime maxAllowedDate = now.plusYears(5);
 
-        if (expiryDays < 1) {
+        if (expireDays < 1) {
             throw new PointLedgerException(PointErrorCode.INVALID_EXPIRATION_RANGE, "Minimum 1 day required.");
         }
         if (!targetDate.isBefore(maxAllowedDate)) {

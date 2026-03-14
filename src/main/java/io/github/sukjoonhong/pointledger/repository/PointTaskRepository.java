@@ -8,17 +8,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PointTaskRepository extends JpaRepository<PointTask, Long> {
     @Query("""
-            SELECT t FROM PointTask t
-                        WHERE t.status IN :statuses
-                        AND t.retryCount < :limit
-                        ORDER BY t.createdAt ASC
-            """)
-    List<PointTask> findTasksToProcess(
+        SELECT t FROM PointTask t 
+        JOIN FETCH t.transaction 
+        WHERE t.id = :taskId 
+        AND t.status IN :statuses 
+        AND t.retryCount < :maxRetry
+    """)
+    Optional<PointTask> findProcessableTask(
+            @Param("taskId") Long taskId,
             @Param("statuses") List<TaskStatus> statuses,
-            @Param("limit") int limit,
-            Pageable pageable
+            @Param("maxRetry") int maxRetry
     );
 }

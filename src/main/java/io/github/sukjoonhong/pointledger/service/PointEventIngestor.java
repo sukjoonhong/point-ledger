@@ -1,5 +1,7 @@
 package io.github.sukjoonhong.pointledger.service;
 
+import io.github.sukjoonhong.pointledger.service.event.PointTaskCapturedEvent;
+import io.github.sukjoonhong.pointledger.service.external.PointTaskRelayService;
 import io.github.sukjoonhong.pointledger.infrastructure.lock.DistributedLockManager;
 import io.github.sukjoonhong.pointledger.infrastructure.messaging.PointMessagePublisher;
 import io.github.sukjoonhong.pointledger.infrastructure.messaging.PointMessageSubscriber;
@@ -11,6 +13,7 @@ import io.github.sukjoonhong.pointledger.repository.PointTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +27,7 @@ public class PointEventIngestor implements PointMessageSubscriber {
     private final PointSequenceManager sequenceManager;
     private final PointMessagePublisher messagePublisher;
     private final DistributedLockManager lockManager;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -34,20 +38,32 @@ public class PointEventIngestor implements PointMessageSubscriber {
                 return null;
             }
 
-            recordLedgerAndTask(command);
+            long taskId = recordLedgerAndTask(command);
+
+            propagate(taskId);
             return null;
         });
     }
 
-    private void recordLedgerAndTask(PointCommand command) {
+    private long recordLedgerAndTask(PointCommand command) {
         PointTransaction transaction = transactionRepository.save(command.toEntity());
 
-        taskRepository.save(PointTask.builder()
+        PointTask task = taskRepository.save(PointTask.builder()
                 .transaction(transaction)
                 .build());
 
         logger.info("Ledger and Task stored successfully. Key: {}, TransactionId: {}",
                 command.pointKey(), transaction.getId());
+        return task.getId();
+    }
+
+    /**
+     * Publishes an internal event for task propagation.
+     * The TransactionalEventListener will capture this after the current transaction commits.
+     */
+    private void propagate(Long taskId) {
+        logger.info("[EVENT_PUBLISH] Publishing TaskCapturedEvent for TaskID: {}", taskId);
+        eventPublisher.publishEvent(new PointTaskCapturedEvent(taskId));
     }
 
     /**

@@ -2,6 +2,7 @@ package io.github.sukjoonhong.pointledger.domain.entity;
 
 import io.github.sukjoonhong.pointledger.domain.exception.PointErrorCode;
 import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
+import io.github.sukjoonhong.pointledger.domain.type.PointWalletStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +31,21 @@ public class PointWallet extends BaseAuditEntity {
 
     @Column(nullable = false)
     private Long lastSequenceNum;
+
+    @Enumerated(EnumType.STRING)
+    private PointWalletStatus status = PointWalletStatus.ACTIVE;
+
+    public void markAsRecovering() {
+        this.status = PointWalletStatus.RECOVERING;
+    }
+
+    public void activate() {
+        this.status = PointWalletStatus.ACTIVE;
+    }
+
+    public boolean isRecovering() {
+        return this.status == PointWalletStatus.RECOVERING;
+    }
 
     /**
      * Applies transaction to wallet balance and updates sequence

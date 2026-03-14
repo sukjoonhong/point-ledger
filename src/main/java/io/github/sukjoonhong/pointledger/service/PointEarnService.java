@@ -33,7 +33,7 @@ public class PointEarnService {
                 tx,
                 policyManager.getMinEarnLimit(),
                 policyManager.getMaxEarnLimit(),
-                policyManager.getExpiryDays(),
+                policyManager.getExpireDays(),
                 timeProvider
         );
 

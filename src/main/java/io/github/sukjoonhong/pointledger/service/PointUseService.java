@@ -12,11 +12,14 @@ import io.github.sukjoonhong.pointledger.domain.type.PointUsageStatus;
 import io.github.sukjoonhong.pointledger.repository.PointAssetRepository;
 import io.github.sukjoonhong.pointledger.repository.PointOutboxRepository;
 import io.github.sukjoonhong.pointledger.repository.PointUsageDetailRepository;
+import io.github.sukjoonhong.pointledger.service.event.PointOutboxCapturedEvent;
+import io.github.sukjoonhong.pointledger.service.external.PointOutboxRelayService;
 import io.github.sukjoonhong.pointledger.support.BusinessTimeProvider;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +35,8 @@ public class PointUseService {
     private final PointAssetRepository assetRepository;
     private final PointUsageDetailRepository usageDetailRepository;
     private final PointOutboxRepository outboxRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final PointOutboxRelayService outboxRelayService;
     private final BusinessTimeProvider timeProvider;
     private final ObjectMapper objectMapper;
 
@@ -151,9 +156,15 @@ public class PointUseService {
                     .build();
 
             outboxRepository.save(outbox);
+            propagate(outbox.getId());
             logger.info("[OUTBOX_SAVED] Compensation task registered for PointKey: {}", newPointKey);
         } catch (JsonProcessingException e) {
             throw new PointLedgerException(PointErrorCode.INTERNAL_SERVER_ERROR, "Failed to serialize command");
         }
+    }
+
+    private void propagate(Long outboxId) {
+        logger.info("[OUTBOX_PUBLISH] Publishing OutboxCapturedEvent for ID: {}", outboxId);
+        eventPublisher.publishEvent(new PointOutboxCapturedEvent(outboxId));
     }
 }
