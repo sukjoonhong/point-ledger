@@ -7,33 +7,44 @@ import io.github.sukjoonhong.pointledger.domain.exception.PointErrorCode;
 import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import io.github.sukjoonhong.pointledger.domain.type.PointAssetStatus;
 import io.github.sukjoonhong.pointledger.domain.type.PointTransactionType;
+import io.github.sukjoonhong.pointledger.support.BusinessTimeProvider;
 import net.jqwik.api.Assume;
 import net.jqwik.api.ForAll;
 import net.jqwik.api.Property;
 import net.jqwik.api.constraints.DoubleRange;
 import net.jqwik.api.constraints.LongRange;
 import net.jqwik.api.constraints.Size;
+import org.mockito.Mockito;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
 
 class PointDomainInvariantTest {
+
+    // [추가] 모든 속성 테스트에서 공통으로 사용할 고정 시간 프로바이더 생성
+    private final BusinessTimeProvider timeProvider = createMockTimeProvider();
+
+    private BusinessTimeProvider createMockTimeProvider() {
+        BusinessTimeProvider mock = Mockito.mock(BusinessTimeProvider.class);
+        given(mock.nowOffset()).willReturn(OffsetDateTime.parse("2026-03-14T10:00:00+09:00"));
+        return mock;
+    }
 
     /**
      * 명제 1 (경제적 보존 법칙):
      * 지갑의 잔액은 언제나 ACTIVE 상태인 모든 자산의 잔액 합계와 일치해야 한다.
-     * 이제 apply 시 보유 한도(maxHoldingLimit)를 함께 검증합니다.
      */
     @Property(tries = 1000)
     void walletBalanceMustEqualTotalActiveAssetRemainingAmount(
             @ForAll @Size(min = 1, max = 30) List<@LongRange(min = 1, max = 100_000) Long> amounts,
             @ForAll @Size(min = 1, max = 30) List<@DoubleRange(max = 1.0) Double> statusThresholds
     ) {
-        // given: 지갑 생성 및 모든 적립을 수용할 수 있는 무작위 한도 설정
         long totalSum = amounts.stream().mapToLong(Long::longValue).sum();
-        long maxHoldingLimit = totalSum + 100_000L; // 적립 성공을 보장하기 위한 넉넉한 한도
+        long maxHoldingLimit = totalSum + 100_000L;
 
         PointWallet wallet = PointWallet.builder()
                 .memberId(1L)
@@ -41,33 +52,30 @@ class PointDomainInvariantTest {
                 .lastSequenceNum(0L)
                 .build();
 
-        // when: 무작위 자산 생성 및 상태 변화 시뮬레이션
         long expectedBalance = 0L;
         for (int i = 0; i < amounts.size(); i++) {
             long amount = amounts.get(i);
             long seq = (long) i + 1;
 
-            // 자산 생성 (여기서는 직접 빌더 사용 - 상태 전이 테스트 목적)
             PointAsset asset = createActiveAsset(wallet, amount, seq);
 
             double dice = statusThresholds.get(i % statusThresholds.size());
-            if (dice < 0.2) { // 20% 취소
+            if (dice < 0.2) {
                 asset.cancel();
-            } else if (dice < 0.4) { // 20% 만료
+            } else if (dice < 0.4) {
                 asset.expire();
-            } else { // 60% 유지 및 지갑 반영
+            } else {
                 expectedBalance += amount;
                 wallet.apply(createEarnTx(amount, seq), maxHoldingLimit);
             }
         }
 
-        // then: [Invariant] 지갑 잔액 == sum(ACTIVE Assets)
         assertThat(wallet.getBalance()).isEqualTo(expectedBalance);
     }
 
     /**
-     * 명제 2 (사용 상세 내역의 한계 법칙):
-     * 누적 환불액은 최초 사용 금액을 초과할 수 없다.
+     * 명제 2 (정책 범위 내 적립):
+     * 적립 금액이 정책 범위를 벗어나면 자산 생성이 거부되어야 한다.
      */
     @Property
     void earnAmountMustBeWithinPolicyRange(
@@ -79,11 +87,12 @@ class PointDomainInvariantTest {
         PointTransaction tx = PointTransaction.builder().amount(earnAmount).build();
 
         if (earnAmount < minLimit || earnAmount > maxLimit) {
-            assertThatThrownBy(() -> PointAsset.createActiveAsset(wallet, tx, minLimit, maxLimit, 30))
+            assertThatThrownBy(() -> PointAsset.createActiveAsset(wallet, tx, minLimit, maxLimit, 30, timeProvider))
                     .isInstanceOf(PointLedgerException.class)
                     .extracting("errorCode").isEqualTo(PointErrorCode.INVALID_EARN_AMOUNT);
         } else {
-            PointAsset asset = PointAsset.createActiveAsset(wallet, tx, minLimit, maxLimit, 30);
+            // [수정] 팩토리 메서드에 timeProvider 전달
+            PointAsset asset = PointAsset.createActiveAsset(wallet, tx, minLimit, maxLimit, 30, timeProvider);
             assertThat(asset.getAmount()).isEqualTo(earnAmount);
         }
     }
@@ -133,6 +142,7 @@ class PointDomainInvariantTest {
                 .remainingAmount(amount)
                 .status(PointAssetStatus.ACTIVE)
                 .seqNum(seq)
+                .expirationDate(timeProvider.nowOffset().plusDays(30)) // Mock 사용
                 .build();
     }
 

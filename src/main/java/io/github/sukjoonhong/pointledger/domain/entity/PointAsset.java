@@ -4,6 +4,7 @@ import io.github.sukjoonhong.pointledger.domain.exception.PointErrorCode;
 import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import io.github.sukjoonhong.pointledger.domain.type.PointAssetStatus;
 import io.github.sukjoonhong.pointledger.domain.type.PointSource;
+import io.github.sukjoonhong.pointledger.support.BusinessTimeProvider;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -64,9 +65,13 @@ public class PointAsset {
             PointTransaction transaction,
             Long minLimit,
             Long maxLimit,
-            Integer expiryDays
+            Integer expiryDays,
+            BusinessTimeProvider timeProvider
     ) {
+        OffsetDateTime now = timeProvider.nowOffset();
+
         validateEarnAmount(transaction.getAmount(), minLimit, maxLimit);
+        validateExpirationRange(expiryDays, now);
 
         return PointAsset.builder()
                 .walletId(wallet.getId())
@@ -77,9 +82,21 @@ public class PointAsset {
                 .remainingAmount(transaction.getAmount())
                 .status(PointAssetStatus.ACTIVE)
                 .source(transaction.getSource())
-                .expirationDate(OffsetDateTime.now().plusDays(expiryDays))
+                .expirationDate(now.plusDays(expiryDays))
                 .seqNum(transaction.getSequenceNum())
                 .build();
+    }
+
+    private static void validateExpirationRange(Integer expiryDays, OffsetDateTime now) {
+        OffsetDateTime targetDate = now.plusDays(expiryDays);
+        OffsetDateTime maxAllowedDate = now.plusYears(5);
+
+        if (expiryDays < 1) {
+            throw new PointLedgerException(PointErrorCode.INVALID_EXPIRATION_RANGE, "Minimum 1 day required.");
+        }
+        if (!targetDate.isBefore(maxAllowedDate)) {
+            throw new PointLedgerException(PointErrorCode.INVALID_EXPIRATION_RANGE, "Must be less than 5 years.");
+        }
     }
 
     private static void validateEarnAmount(Long amount, Long min, Long max) {
@@ -89,9 +106,10 @@ public class PointAsset {
         }
     }
 
-    public boolean isExpired() {
+    public boolean isExpired(BusinessTimeProvider timeProvider) {
+        OffsetDateTime now = timeProvider.nowOffset();
         return this.status == PointAssetStatus.EXPIRED ||
-                OffsetDateTime.now().isAfter(this.expirationDate);
+                now.isAfter(this.expirationDate);
     }
 
     public void deduct(Long amountToDeduct) {

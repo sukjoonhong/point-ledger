@@ -7,6 +7,7 @@ import io.github.sukjoonhong.pointledger.domain.entity.PointWallet;
 import io.github.sukjoonhong.pointledger.domain.exception.PointErrorCode;
 import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import io.github.sukjoonhong.pointledger.repository.PointAssetRepository;
+import io.github.sukjoonhong.pointledger.support.BusinessTimeProvider;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ public class PointEarnService {
 
     private final Logger logger = LoggerFactory.getLogger(PointEarnService.class);
     private final PointAssetRepository assetRepository;
+    private final BusinessTimeProvider timeProvider;
     private final PointPolicyManager policyManager;
 
     /**
@@ -31,7 +33,8 @@ public class PointEarnService {
                 tx,
                 policyManager.getMinEarnLimit(),
                 policyManager.getMaxEarnLimit(),
-                policyManager.getExpiryDays()
+                policyManager.getExpiryDays(),
+                timeProvider
         );
 
         assetRepository.save(asset);
@@ -45,15 +48,15 @@ public class PointEarnService {
      */
     @Transactional
     public void handleCancel(PointTransaction tx) {
-        PointAsset asset = assetRepository.findByPointKey(tx.getPointKey())
+        PointAsset asset = assetRepository.findByPointKey(tx.getOriginalPointKey())
                 .orElseThrow(() -> new PointLedgerException(PointErrorCode.ASSET_NOT_FOUND,
-                        "No asset found for pointKey: " + tx.getPointKey()));
+                        "No asset found for pointKey: " + tx.getOriginalPointKey()));
         try {
             asset.cancel();
             assetRepository.save(asset);
 
-            logger.info("Earning asset cancelled. AssetID: {}, PointKey: {}",
-                    asset.getId(), tx.getPointKey());
+            logger.info("Earning asset cancelled. AssetID: {}, PointKey: {} OriginalKey: {}",
+                    asset.getId(), tx.getPointKey(), tx.getOriginalPointKey());
         } catch (IllegalStateException e) {
             logger.error("Failed to cancel earning asset. Reason: {}", e.getMessage());
             throw e;

@@ -2,7 +2,7 @@ package io.github.sukjoonhong.pointledger.infrastructure.messaging.local;
 
 import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
 import io.github.sukjoonhong.pointledger.infrastructure.messaging.PointDlqPublisher;
-import io.github.sukjoonhong.pointledger.subscriber.PointMessageSubscriber;
+import io.github.sukjoonhong.pointledger.infrastructure.messaging.PointMessageSubscriber;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;

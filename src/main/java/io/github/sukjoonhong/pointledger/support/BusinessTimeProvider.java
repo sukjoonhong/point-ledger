@@ -3,11 +3,7 @@ package io.github.sukjoonhong.pointledger.support;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
+import java.time.*;
 
 @Component
 @RequiredArgsConstructor
@@ -29,5 +25,9 @@ public class BusinessTimeProvider {
 
     public ZonedDateTime nowZoned() {
         return ZonedDateTime.now(clock);
+    }
+
+    public OffsetDateTime nowOffset() {
+        return OffsetDateTime.now(clock);
     }
 }

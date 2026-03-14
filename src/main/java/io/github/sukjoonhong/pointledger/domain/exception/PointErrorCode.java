@@ -19,6 +19,8 @@ public enum PointErrorCode {
     ASSET_ALREADY_USED("A003", "Cannot cancel earning: Asset has already been used.", HttpStatus.CONFLICT),
     INSUFFICIENT_ASSET_BALANCE("A004", "Insufficient individual asset balance.", HttpStatus.UNPROCESSABLE_ENTITY),
     ASSET_NOT_FOUND("A005", "Original earning asset not found.", HttpStatus.NOT_FOUND),
+    INVALID_EXPIRATION_RANGE("A006", "Expiration date must be between 1 day and 5 years.", HttpStatus.BAD_REQUEST),
+    ORIGINAL_KEY_REQUIRED("A007", "Original point key is required for cancellation or compensation transactions.", HttpStatus.BAD_REQUEST),
 
     // 3. Usage & Refund (U)
     INVALID_REFUND_AMOUNT("U001", "Refund amount exceeds original usage amount.", HttpStatus.BAD_REQUEST),
@@ -28,6 +30,7 @@ public enum PointErrorCode {
     INVALID_AMOUNT("C001", "Amount must be strictly positive.", HttpStatus.BAD_REQUEST),
     ORDER_ID_REQUIRED("C002", "OrderId is required.", HttpStatus.BAD_REQUEST),
     ORDER_ID_NOT_ALLOWED("C003", "OrderId must be null for this type.", HttpStatus.BAD_REQUEST),
+    CONCURRENT_REQUEST("C004", "Another request with the same key is being processed or already completed.", HttpStatus.CONFLICT),
 
     // 5. System (S): 인프라 및 알 수 없는 오류
     UNSUPPORTED_TX_TYPE("S001", "Unsupported transaction type.", HttpStatus.BAD_REQUEST),

@@ -12,10 +12,12 @@ import io.github.sukjoonhong.pointledger.domain.type.PointUsageStatus;
 import io.github.sukjoonhong.pointledger.repository.PointAssetRepository;
 import io.github.sukjoonhong.pointledger.repository.PointOutboxRepository;
 import io.github.sukjoonhong.pointledger.repository.PointUsageDetailRepository;
+import io.github.sukjoonhong.pointledger.support.BusinessTimeProvider;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -30,10 +32,21 @@ public class PointUseService {
     private final PointAssetRepository assetRepository;
     private final PointUsageDetailRepository usageDetailRepository;
     private final PointOutboxRepository outboxRepository;
+    private final BusinessTimeProvider timeProvider;
     private final ObjectMapper objectMapper;
 
+    private static final Sort DEFAULT_DEDUCTION_SORT =
+            Sort.by(Sort.Direction.ASC, "source", "expirationDate", "id");
+
+    private static final Sort LIFO_REFUND_SORT =
+            Sort.by(Sort.Direction.DESC, "id");
+
+    @Transactional
     public void handleUse(PointTransaction tx) {
-        List<PointAsset> availableAssets = assetRepository.findAllForDeduction(tx.getMemberId());
+        List<PointAsset> availableAssets = assetRepository.findAllForDeduction(
+                tx.getMemberId(),
+                DEFAULT_DEDUCTION_SORT
+        );
         long remainToDeduct = tx.getAmount();
         List<PointUsageDetail> details = new ArrayList<>();
 
@@ -72,7 +85,10 @@ public class PointUseService {
      */
     @Transactional
     public void handleCancel(PointWallet wallet, PointTransaction tx) {
-        List<PointUsageDetail> usageDetails = usageDetailRepository.findAllByOrderIdOrderByIdDesc(tx.getOrderId());
+        List<PointUsageDetail> usageDetails = usageDetailRepository.findAllForRefund(
+                tx.getOrderId(),
+                LIFO_REFUND_SORT
+        );
         long remainRefundAmount = tx.getAmount();
 
         for (PointUsageDetail detail : usageDetails) {
@@ -87,7 +103,7 @@ public class PointUseService {
                     .orElseThrow(() -> new PointLedgerException(PointErrorCode.ASSET_NOT_ACTIVE,
                             "Original asset not found. ID: " + detail.getPointAssetId()));
 
-            if (asset.isExpired()) {
+            if (asset.isExpired(timeProvider)) {
                 issueCompensationTransaction(wallet, tx, amountToRefund);
             } else {
                 asset.restore(amountToRefund);

@@ -1,6 +1,6 @@
 package io.github.sukjoonhong.pointledger.infrastructure.messaging.kafka;
 
-import io.github.sukjoonhong.pointledger.subscriber.PointMessageSubscriber;
+import io.github.sukjoonhong.pointledger.infrastructure.messaging.PointMessageSubscriber;
 import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

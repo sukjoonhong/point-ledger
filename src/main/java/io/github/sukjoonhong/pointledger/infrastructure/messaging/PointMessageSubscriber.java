@@ -1,4 +1,4 @@
-package io.github.sukjoonhong.pointledger.subscriber;
+package io.github.sukjoonhong.pointledger.infrastructure.messaging;
 
 import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
 

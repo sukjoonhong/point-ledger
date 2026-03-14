@@ -3,9 +3,11 @@ package io.github.sukjoonhong.pointledger.unit;
 import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
 import io.github.sukjoonhong.pointledger.domain.entity.PointTask;
 import io.github.sukjoonhong.pointledger.domain.entity.PointTransaction;
+import io.github.sukjoonhong.pointledger.infrastructure.lock.DistributedLockManager;
 import io.github.sukjoonhong.pointledger.repository.PointTaskRepository;
 import io.github.sukjoonhong.pointledger.repository.PointTransactionRepository;
-import io.github.sukjoonhong.pointledger.service.PointLedgerService;
+import io.github.sukjoonhong.pointledger.service.PointEventIngestor;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,7 +21,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class PointLedgerServiceTest {
+class PointEventIngestorTest {
 
     @Mock
     private PointTransactionRepository transactionRepository;
@@ -28,7 +30,18 @@ class PointLedgerServiceTest {
     private PointTaskRepository taskRepository;
 
     @InjectMocks
-    private PointLedgerService pointLedgerService;
+    private PointEventIngestor pointEventIngestor;
+
+    @Mock private DistributedLockManager lockManager;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(lockManager.executeWithLock(anyString(), any()))
+                .thenAnswer(invocation -> {
+                    java.util.function.Supplier<?> action = invocation.getArgument(1);
+                    return action.get();
+                });
+    }
 
     @Test
     @DisplayName("정상적인 이벤트 수신 시 원장과 태스크가 모두 저장되어야 한다")
@@ -46,7 +59,7 @@ class PointLedgerServiceTest {
         given(transactionRepository.save(any(PointTransaction.class))).willReturn(mockTransaction);
 
         // when
-        pointLedgerService.onMessage(command);
+        pointEventIngestor.onMessage(command);
 
         // then
         verify(transactionRepository, times(1)).save(any(PointTransaction.class));
@@ -65,7 +78,7 @@ class PointLedgerServiceTest {
         given(transactionRepository.existsByPointKey("evt-duplicate")).willReturn(true);
 
         // when
-        pointLedgerService.onMessage(command);
+        pointEventIngestor.onMessage(command);
 
         // then
         verify(transactionRepository, never()).save(any());

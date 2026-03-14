@@ -1,6 +1,5 @@
 package io.github.sukjoonhong.pointledger.domain.entity;
 
-import io.github.sukjoonhong.pointledger.domain.type.OrderStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -10,7 +9,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -33,11 +31,4 @@ public class Orders extends BaseAuditEntity {
 
     @Column(nullable = false, unique = true)
     private String orderNo;
-
-    @Column(nullable = false)
-    private Long totalAmount;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private OrderStatus status;
 }

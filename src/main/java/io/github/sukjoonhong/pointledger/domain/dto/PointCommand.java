@@ -25,7 +25,7 @@ public record PointCommand(
     @Builder
     public PointCommand {
         validateAmount(amount);
-        validateContext(type, orderId);
+        validateContext(type, orderId, originalPointKey);
     }
 
     private void validateAmount(Long amount) {
@@ -35,14 +35,22 @@ public record PointCommand(
         }
     }
 
-    private void validateContext(PointTransactionType type, String orderId) {
+    private void validateContext(PointTransactionType type, String orderId, String originalPointKey) {
+        // 1. 주문 번호 필수 체크 (사용/사용취소)
         final boolean isOrderType = (type == PointTransactionType.USE || type == PointTransactionType.CANCEL_USE);
-
         if (isOrderType && !StringUtils.hasText(orderId)) {
             throw new PointLedgerException(PointErrorCode.ORDER_ID_REQUIRED,
-                    "Transaction type: " + type);
+                    "Transaction type: " + type + " requires orderId");
         }
 
+        // 2. 원본 키 필수 체크 (적립취소/사용취소)
+        final boolean isCancelType = (type == PointTransactionType.CANCEL_EARN || type == PointTransactionType.CANCEL_USE);
+        if (isCancelType && !StringUtils.hasText(originalPointKey)) {
+            throw new PointLedgerException(PointErrorCode.ORIGINAL_KEY_REQUIRED,
+                    "Transaction type: " + type + " requires originalPointKey");
+        }
+
+        // 3. 비즈니스 맥락에 맞지 않는 데이터 방어
         if (!isOrderType && StringUtils.hasText(orderId)) {
             throw new PointLedgerException(PointErrorCode.ORDER_ID_NOT_ALLOWED,
                     "Transaction type: " + type + ", OrderId: " + orderId);

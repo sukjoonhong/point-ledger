@@ -6,7 +6,7 @@ import io.github.sukjoonhong.pointledger.domain.entity.PointWallet;
 import io.github.sukjoonhong.pointledger.domain.type.PointSource;
 import io.github.sukjoonhong.pointledger.domain.type.PointTransactionType;
 import io.github.sukjoonhong.pointledger.repository.PointWalletRepository;
-import io.github.sukjoonhong.pointledger.service.PointLedgerProcessor;
+import io.github.sukjoonhong.pointledger.service.PointLedgerService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,12 +24,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-class PointLedgerProcessorIntegrationTest {
+class PointLedgerServiceIntegrationTest {
 
-    private final Logger logger = LoggerFactory.getLogger(PointLedgerProcessorIntegrationTest.class);
+    private final Logger logger = LoggerFactory.getLogger(PointLedgerServiceIntegrationTest.class);
 
     @Autowired
-    private PointLedgerProcessor walletUpdater;
+    private PointLedgerService walletUpdater;
 
     @Autowired
     private PointWalletRepository walletRepository;

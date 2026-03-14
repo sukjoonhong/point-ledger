@@ -20,7 +20,7 @@ public class PointTaskConsumer {
     private static final int MAX_RETRY_LIMIT = 3;
 
     private final PointTaskRepository taskRepository;
-    private final PointLedgerProcessor ledgerProcessor;
+    private final PointLedgerService ledgerProcessor;
 //    private final PointAlertService alertService;
 
     @Scheduled(fixedDelay = 1000)

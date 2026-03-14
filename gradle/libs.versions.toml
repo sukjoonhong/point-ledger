@@ -2,6 +2,7 @@
 spring-boot = "3.4.3"
 lombok = "1.18.34"
 jqwik = "1.9.3"
+caffeine = "3.1.8"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -14,6 +15,8 @@ spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-star
 h2 = { module = "com.h2database:h2" }
 
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+
+caffeine = { group = "com.github.ben-manes.caffeine", name = "caffeine", version.ref = "caffeine" }
 
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 jqwik = { group = "net.jqwik", name = "jqwik", version.ref = "jqwik" }

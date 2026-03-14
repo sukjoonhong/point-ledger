@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PointAlertService {
     private final Logger logger = LoggerFactory.getLogger(PointAlertService.class);
+
     void alert(String message) {
         logger.error(message);
     }

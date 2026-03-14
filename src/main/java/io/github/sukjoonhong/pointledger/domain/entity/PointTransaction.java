@@ -40,7 +40,8 @@ public class PointTransaction extends BaseAuditEntity {
     private String description;
 
     @Builder
-    public PointTransaction(Long memberId,
+    public PointTransaction(Long id,
+                            Long memberId,
                             Long amount,
                             String pointKey,
                             String originalPointKey,
@@ -49,6 +50,7 @@ public class PointTransaction extends BaseAuditEntity {
                             PointSource source,
                             String orderId,
                             String description) {
+        this.id = id;
         this.memberId = memberId;
         this.amount = amount;
         this.pointKey = pointKey;

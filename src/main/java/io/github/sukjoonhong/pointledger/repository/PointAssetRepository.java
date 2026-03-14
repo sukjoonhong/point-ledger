@@ -1,6 +1,7 @@
 package io.github.sukjoonhong.pointledger.repository;
 
 import io.github.sukjoonhong.pointledger.domain.entity.PointAsset;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,16 +11,12 @@ import java.util.Optional;
 
 public interface PointAssetRepository extends JpaRepository<PointAsset, Long> {
     @Query("""
-        SELECT asset FROM PointAsset asset 
-        WHERE asset.memberId = :memberId 
-          AND asset.status = 'ACTIVE' 
-          AND asset.remainingAmount > 0 
-        ORDER BY 
-            CASE WHEN asset.source = 'ADMIN' THEN 1 ELSE 2 END ASC, 
-            asset.expirationDate ASC, 
-            asset.id ASC
+        SELECT a FROM PointAsset a 
+        WHERE a.memberId = :memberId 
+          AND a.status = 'ACTIVE' 
+          AND a.remainingAmount > 0
     """)
-    List<PointAsset> findAllForDeduction(@Param("memberId") Long memberId);
+    List<PointAsset> findAllForDeduction(@Param("memberId") Long memberId, Sort sort);
 
     Optional<PointAsset> findByPointKey(String pointKey);
 }

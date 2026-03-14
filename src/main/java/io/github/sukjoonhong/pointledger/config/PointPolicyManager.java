@@ -13,5 +13,5 @@ public class PointPolicyManager {
     private Long minEarnLimit;
     private Long maxEarnLimit;
     private Long maxFreePointHoldingLimit;
-    private Integer expiryDays = 365;
+    private Integer expiryDays;
 }

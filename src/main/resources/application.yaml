@@ -15,3 +15,4 @@ point-ledger:
     min-earn-limit: 1
     max-earn-limit: 100000
     max-free-point-holding-limit: 1000000
+    expire-days: 365
