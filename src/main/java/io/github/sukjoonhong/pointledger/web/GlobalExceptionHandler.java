@@ -5,7 +5,10 @@ import io.github.sukjoonhong.pointledger.domain.exception.PointErrorCode;
 import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -24,6 +27,31 @@ public class GlobalExceptionHandler {
         ErrorResponse response = ErrorResponse.of(errorCode, e.getMessage());
 
         return new ResponseEntity<>(response, errorCode.getStatus());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    protected ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {
+        String detail = e.getBindingResult().getFieldErrors().stream()
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("입력값 검증 실패");
+
+        logger.warn("[VALIDATION_ERROR] {}", detail);
+
+        return new ResponseEntity<>(
+                ErrorResponse.of(PointErrorCode.INVALID_AMOUNT, detail),
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    protected ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        logger.warn("[DB_CONSTRAINT] {}", e.getMostSpecificCause().getMessage());
+
+        return new ResponseEntity<>(
+                ErrorResponse.of(PointErrorCode.CONCURRENT_REQUEST, "중복된 요청이거나 데이터 제약 조건 위반입니다."),
+                HttpStatus.CONFLICT
+        );
     }
 
     @ExceptionHandler(Exception.class)

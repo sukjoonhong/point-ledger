@@ -48,15 +48,19 @@ public class PointEarnService {
      * 재발급 포인트 적립 처리
      */
     @Transactional
-    public void handleReEarn(PointTransaction tx) {
+    public void handleReEarn(PointWallet wallet, PointTransaction tx) {
         PointAsset newAsset = PointAsset.builder()
+                .walletId(wallet.getId())
                 .memberId(tx.getMemberId())
                 .transactionId(tx.getId())
+                .pointKey(tx.getPointKey())
                 .amount(tx.getAmount())
                 .remainingAmount(tx.getAmount())
                 .status(PointAssetStatus.ACTIVE)
                 .expirationDate(timeProvider.nowOffset().plusDays(policyManager.getExpireDays()))
                 .source(tx.getSource())
+                .sourcePriority(tx.getSource().getPriority())
+                .seqNum(tx.getSequenceNum())
                 .build();
 
         assetRepository.save(newAsset);

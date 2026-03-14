@@ -23,7 +23,7 @@ public class PointBusinessRouter {
     public void route(PointWallet wallet, PointTransaction tx) {
         switch (tx.getType()) {
             case EARN -> earnService.handleEarn(wallet, tx);
-            case RE_EARN -> earnService.handleReEarn(tx);
+            case RE_EARN -> earnService.handleReEarn(wallet, tx);
             case CANCEL_EARN -> earnService.handleCancel(tx);
             case USE -> useService.handleUse(tx);
             case CANCEL_USE -> useService.handleCancel(wallet, tx);
