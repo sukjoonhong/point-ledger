@@ -87,7 +87,7 @@ class PointUseServiceTest {
 
     @Test
     @DisplayName("사용 취소: 자산이 만료되지 않았으면 원본 자산으로 복구한다")
-    void handleCancel_RestoreToAsset() {
+    void cancelAndGetRestoredAmount_RestoreToAsset() {
         // given
         PointTransaction tx = createCancelTx(500L);
         PointUsageDetail detail = createDetail(1L, 500L);
@@ -98,7 +98,7 @@ class PointUseServiceTest {
         given(assetRepository.findById(1L)).willReturn(Optional.of(asset));
 
         // when
-        pointUseService.handleCancel(null, tx);
+        pointUseService.cancelAndGetRestoredAmount(null, tx);
 
         // then
         assertThat(asset.getRemainingAmount()).isEqualTo(1000L); // 복구 완료
@@ -107,7 +107,7 @@ class PointUseServiceTest {
 
     @Test
     @DisplayName("사용 취소: 자산이 이미 만료되었다면 보상 적립(Outbox)을 발행한다")
-    void handleCancel_Compensation() throws Exception {
+    void cancelAndGetRestoredAmount_Compensation() throws Exception {
         // given
         PointTransaction tx = createCancelTx(500L);
         PointUsageDetail detail = createDetail(1L, 500L);
@@ -138,7 +138,7 @@ class PointUseServiceTest {
         given(objectMapper.writeValueAsString(any())).willReturn("{}");
 
         // when
-        pointUseService.handleCancel(PointWallet.builder().memberId(1L).build(), tx);
+        pointUseService.cancelAndGetRestoredAmount(PointWallet.builder().memberId(1L).build(), tx);
 
         // then
         // 1. DB 저장 확인

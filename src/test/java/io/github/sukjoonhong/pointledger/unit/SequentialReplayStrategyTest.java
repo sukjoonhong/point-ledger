@@ -71,8 +71,8 @@ class SequentialReplayStrategyTest {
         // [주의] wallet.apply() 로직은 Wallet 엔티티 내부에 있으므로 결과값 검증
         assertThat(wallet.getBalance()).isEqualTo(1200L);
 
-        verify(businessRouter, times(1)).route(eq(wallet), eq(tx1));
-        verify(businessRouter, times(1)).route(eq(wallet), eq(tx2));
+        verify(businessRouter, times(1)).executeAndGetAppliedAmount(eq(wallet), eq(tx1));
+        verify(businessRouter, times(1)).executeAndGetAppliedAmount(eq(wallet), eq(tx2));
     }
 
     @Test

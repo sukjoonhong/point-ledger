@@ -81,22 +81,23 @@ public class PointUseService {
         assetRepository.saveAll(modifiedAssets);
         usageDetailRepository.saveAll(details);
 
-        logger.info("Point deduction successful. TxID: {}, Amount: {}", tx.getId(), tx.getAmount());
+        logger.info("[POINT_DEDUCTION_SUCCESS] TxID: {}, Amount: {}", tx.getId(), tx.getAmount());
     }
 
     /**
-     * 사용 취소 처리
-     * - 도메인 규칙: 1주문(orderId) 당 포인트 사용(USE)은 1회만 발생함을 전제함.
-     * - 부분 취소 발생 시, 동일 orderId로 묶인 UsageDetail을 LIFO 순서로 탐색하여 미환불 잔여액(refundable)만큼 복구함.
+     * Domain Rule: 1 USE per orderId is assumed.
+     * Partial cancels will find UsageDetails by orderId and refund in LIFO order.
+     * Returns the actual restored amount that should be reflected in the wallet balance.
      */
     @Transactional
-    public void handleCancel(PointWallet wallet, PointTransaction tx) {
+    public Long cancelAndGetRestoredAmount(PointWallet wallet, PointTransaction tx) {
         List<PointUsageDetail> usageDetails = usageDetailRepository.findAllForRefund(
                 tx.getOrderId(),
                 LIFO_REFUND_SORT
         );
 
         long remainRefundAmount = tx.getAmount();
+        long actualRestoredAmount = 0L; // Track the actually restored amount
         List<PointAsset> assetsToUpdate = new ArrayList<>();
 
         for (PointUsageDetail detail : usageDetails) {
@@ -114,6 +115,7 @@ public class PointUseService {
                 issueReEarnTransaction(wallet, tx, amountToRefund);
             } else {
                 asset.restore(amountToRefund);
+                actualRestoredAmount += amountToRefund;
                 assetsToUpdate.add(asset);
             }
 
@@ -125,6 +127,8 @@ public class PointUseService {
         usageDetailRepository.saveAll(usageDetails);
 
         validateRefundResult(tx.getOrderId(), remainRefundAmount);
+
+        return actualRestoredAmount;
     }
 
     private void issueReEarnTransaction(PointWallet wallet, PointTransaction tx, long amount) {
@@ -155,7 +159,7 @@ public class PointUseService {
 
     private void validateRefundResult(String orderId, long remainAmount) {
         if (remainAmount > 0) {
-            logger.error("Refund failed. Amount remaining: {}, OrderID: {}", remainAmount, orderId);
+            logger.error("[REFUND_FAILED] Amount remaining: {}, OrderID: {}", remainAmount, orderId);
             throw new PointLedgerException(PointErrorCode.INVALID_REFUND_AMOUNT,
                     "Refund amount exceeds available usage details. Remaining: " + remainAmount);
         }

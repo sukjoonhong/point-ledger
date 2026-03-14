@@ -36,9 +36,6 @@ public class PointFacadeService {
     private final PointBusinessRouter businessRouter;
     private final PointPolicyManager policyManager;
 
-    // ──────────────────────────────────────────────
-    // 적립
-    // ──────────────────────────────────────────────
     @Transactional
     public PointResponse earn(PointEarnRequest request) {
         PointWallet wallet = getOrCreateWalletWithLock(request.memberId());
@@ -56,7 +53,7 @@ public class PointFacadeService {
                 null
         );
 
-        businessRouter.route(wallet, tx);
+        businessRouter.executeAndGetAppliedAmount(wallet, tx);
         wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
         walletRepository.save(wallet);
 
@@ -66,9 +63,6 @@ public class PointFacadeService {
         return toResponse(tx, wallet, "포인트가 적립되었습니다.");
     }
 
-    // ──────────────────────────────────────────────
-    // 적립 취소
-    // ──────────────────────────────────────────────
     @Transactional
     public PointResponse cancelEarn(PointCancelEarnRequest request) {
         PointWallet wallet = getOrCreateWalletWithLock(request.memberId());
@@ -91,7 +85,7 @@ public class PointFacadeService {
                 null
         );
 
-        businessRouter.route(wallet, tx);
+        businessRouter.executeAndGetAppliedAmount(wallet, tx);
         wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
         walletRepository.save(wallet);
 
@@ -101,9 +95,6 @@ public class PointFacadeService {
         return toResponse(tx, wallet, "적립이 취소되었습니다.");
     }
 
-    // ──────────────────────────────────────────────
-    // 사용
-    // ──────────────────────────────────────────────
     @Transactional
     public PointResponse use(PointUseRequest request) {
         PointWallet wallet = getOrCreateWalletWithLock(request.memberId());
@@ -121,7 +112,7 @@ public class PointFacadeService {
                 request.orderId()
         );
 
-        businessRouter.route(wallet, tx);
+        businessRouter.executeAndGetAppliedAmount(wallet, tx);
         wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
         walletRepository.save(wallet);
 
@@ -131,9 +122,6 @@ public class PointFacadeService {
         return toResponse(tx, wallet, "포인트가 사용되었습니다.");
     }
 
-    // ──────────────────────────────────────────────
-    // 사용 취소
-    // ──────────────────────────────────────────────
     @Transactional
     public PointResponse cancelUse(PointCancelUseRequest request) {
         PointWallet wallet = getOrCreateWalletWithLock(request.memberId());
@@ -151,7 +139,7 @@ public class PointFacadeService {
                 request.orderId()
         );
 
-        businessRouter.route(wallet, tx);
+        businessRouter.executeAndGetAppliedAmount(wallet, tx);
         wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
         walletRepository.save(wallet);
 
@@ -161,9 +149,6 @@ public class PointFacadeService {
         return toResponse(tx, wallet, "사용이 취소되었습니다.");
     }
 
-    // ──────────────────────────────────────────────
-    // 잔액 조회
-    // ──────────────────────────────────────────────
     @Transactional(readOnly = true)
     public PointResponse getBalance(Long memberId) {
         PointWallet wallet = walletRepository.findByMemberId(memberId)
@@ -177,10 +162,6 @@ public class PointFacadeService {
                 .message("현재 잔액을 조회했습니다.")
                 .build();
     }
-
-    // ──────────────────────────────────────────────
-    // Private helpers
-    // ──────────────────────────────────────────────
 
     private PointWallet getOrCreateWalletWithLock(Long memberId) {
         try {

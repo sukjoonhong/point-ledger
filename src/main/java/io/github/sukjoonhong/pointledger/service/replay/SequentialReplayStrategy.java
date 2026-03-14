@@ -35,7 +35,7 @@ public class SequentialReplayStrategy implements PointReplayStrategy {
 
             switch (status) {
                 case EXPECTED -> {
-                    businessRouter.route(wallet, tx);
+                    businessRouter.executeAndGetAppliedAmount(wallet, tx);
                     wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
                     logger.info("[REPLAY_STEP_SUCCESS] Seq: {}", tx.getSequenceNum());
                 }
