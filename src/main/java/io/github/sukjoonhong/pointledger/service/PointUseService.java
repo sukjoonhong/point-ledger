@@ -13,15 +13,14 @@ import io.github.sukjoonhong.pointledger.repository.PointAssetRepository;
 import io.github.sukjoonhong.pointledger.repository.PointOutboxRepository;
 import io.github.sukjoonhong.pointledger.repository.PointUsageDetailRepository;
 import io.github.sukjoonhong.pointledger.service.event.PointOutboxCapturedEvent;
-import io.github.sukjoonhong.pointledger.service.external.PointOutboxRelayService;
 import io.github.sukjoonhong.pointledger.support.BusinessTimeProvider;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,12 +35,11 @@ public class PointUseService {
     private final PointUsageDetailRepository usageDetailRepository;
     private final PointOutboxRepository outboxRepository;
     private final ApplicationEventPublisher eventPublisher;
-    private final PointOutboxRelayService outboxRelayService;
     private final BusinessTimeProvider timeProvider;
     private final ObjectMapper objectMapper;
 
     private static final Sort DEFAULT_DEDUCTION_SORT =
-            Sort.by(Sort.Direction.ASC, "source", "expirationDate", "id");
+            Sort.by(Sort.Direction.ASC, "sourcePriority", "expirationDate", "id");
 
     private static final Sort LIFO_REFUND_SORT =
             Sort.by(Sort.Direction.DESC, "id");
@@ -52,8 +50,10 @@ public class PointUseService {
                 tx.getMemberId(),
                 DEFAULT_DEDUCTION_SORT
         );
+
         long remainToDeduct = tx.getAmount();
         List<PointUsageDetail> details = new ArrayList<>();
+        List<PointAsset> modifiedAssets = new ArrayList<>();
 
         for (PointAsset asset : availableAssets) {
             if (remainToDeduct <= 0) break;
@@ -62,6 +62,7 @@ public class PointUseService {
             asset.deduct(deductAmount);
             remainToDeduct -= deductAmount;
 
+            modifiedAssets.add(asset);
             details.add(PointUsageDetail.builder()
                     .transactionId(tx.getId())
                     .pointAssetId(asset.getId())
@@ -74,19 +75,19 @@ public class PointUseService {
 
         if (remainToDeduct > 0) {
             throw new PointLedgerException(PointErrorCode.INSUFFICIENT_BALANCE,
-                    "Insufficient total point balance for deduction. Deficit: " + remainToDeduct);
+                    "Insufficient balance. Deficit: " + remainToDeduct);
         }
 
-        assetRepository.saveAll(availableAssets);
+        assetRepository.saveAll(modifiedAssets);
         usageDetailRepository.saveAll(details);
 
-        logger.info("Point deduction completed. TxID: {}, OrderID: {}, AssetsUsed: {}",
-                tx.getId(), tx.getOrderId(), details.size());
+        logger.info("Point deduction successful. TxID: {}, Amount: {}", tx.getId(), tx.getAmount());
     }
 
     /**
      * 사용 취소 처리
-     * 정책: 사용 시점의 역순(LIFO)으로 환불하여 고객에게 유리한 자산(만료일이 긴 것)부터 복구함
+     * - 도메인 규칙: 1주문(orderId) 당 포인트 사용(USE)은 1회만 발생함을 전제함.
+     * - 부분 취소 발생 시, 동일 orderId로 묶인 UsageDetail을 LIFO 순서로 탐색하여 미환불 잔여액(refundable)만큼 복구함.
      */
     @Transactional
     public void handleCancel(PointWallet wallet, PointTransaction tx) {
@@ -94,62 +95,52 @@ public class PointUseService {
                 tx.getOrderId(),
                 LIFO_REFUND_SORT
         );
+
         long remainRefundAmount = tx.getAmount();
+        List<PointAsset> assetsToUpdate = new ArrayList<>();
 
         for (PointUsageDetail detail : usageDetails) {
             if (remainRefundAmount <= 0) break;
 
-            long refundableFromDetail = detail.getAmountUsed() - detail.getAmountRefunded();
-            if (refundableFromDetail <= 0) continue;
+            long refundable = detail.getAmountUsed() - detail.getAmountRefunded();
+            if (refundable <= 0) continue;
 
-            long amountToRefund = Math.min(refundableFromDetail, remainRefundAmount);
-
+            long amountToRefund = Math.min(refundable, remainRefundAmount);
             PointAsset asset = assetRepository.findById(detail.getPointAssetId())
                     .orElseThrow(() -> new PointLedgerException(PointErrorCode.ASSET_NOT_ACTIVE,
                             "Original asset not found. ID: " + detail.getPointAssetId()));
 
             if (asset.isExpired(timeProvider)) {
-                issueCompensationTransaction(wallet, tx, amountToRefund);
+                issueReEarnTransaction(wallet, tx, amountToRefund);
             } else {
                 asset.restore(amountToRefund);
-                assetRepository.save(asset);
+                assetsToUpdate.add(asset);
             }
 
             detail.refund(amountToRefund);
-            usageDetailRepository.save(detail);
             remainRefundAmount -= amountToRefund;
         }
+
+        assetRepository.saveAll(assetsToUpdate);
+        usageDetailRepository.saveAll(usageDetails);
 
         validateRefundResult(tx.getOrderId(), remainRefundAmount);
     }
 
-    private void validateRefundResult(String orderId, long remainAmount) {
-        if (remainAmount > 0) {
-            logger.error("Refund failed. Amount remaining: {}, OrderID: {}", remainAmount, orderId);
-            throw new PointLedgerException(PointErrorCode.INVALID_REFUND_AMOUNT,
-                    "Refund amount exceeds available usage details. Remaining: " + remainAmount);
-        }
-    }
-
-    /**
-     * 보상 트랜잭션 발행
-     * 원본 자산이 만료되었으므로, 동일한 금액을 새로운 유효기간으로 재발행하기 위해 큐에 던집니다.
-     */
-    private void issueCompensationTransaction(PointWallet wallet, PointTransaction parentTx, long amount) {
-        String newPointKey = "COMP-" + UUID.randomUUID();
-
+    private void issueReEarnTransaction(PointWallet wallet, PointTransaction tx, long amount) {
+        String newKey = "RE-" + UUID.randomUUID().toString().substring(0, 8);
         PointCommand command = PointCommand.builder()
                 .memberId(wallet.getMemberId())
                 .amount(amount)
-                .pointKey(newPointKey)
-                .type(PointTransactionType.EARN)
+                .pointKey(newKey)
+                .type(PointTransactionType.RE_EARN)
                 .source(PointSource.SYSTEM)
-                .description("Compensation for: " + parentTx.getOrderId())
+                .description("Compensation for expired asset. Original OrderID: " + tx.getOrderId())
                 .build();
 
         try {
             PointOutbox outbox = PointOutbox.builder()
-                    .eventType("COMPENSATION_EARN")
+                    .eventType("RE_EARN")
                     .payload(objectMapper.writeValueAsString(command))
                     .status(PointOutbox.OutboxStatus.PENDING)
                     .retryCount(0)
@@ -157,9 +148,16 @@ public class PointUseService {
 
             outboxRepository.save(outbox);
             propagate(outbox.getId());
-            logger.info("[OUTBOX_SAVED] Compensation task registered for PointKey: {}", newPointKey);
         } catch (JsonProcessingException e) {
-            throw new PointLedgerException(PointErrorCode.INTERNAL_SERVER_ERROR, "Failed to serialize command");
+            throw new PointLedgerException(PointErrorCode.INTERNAL_SERVER_ERROR, "Failed to serialize RE_EARN command");
+        }
+    }
+
+    private void validateRefundResult(String orderId, long remainAmount) {
+        if (remainAmount > 0) {
+            logger.error("Refund failed. Amount remaining: {}, OrderID: {}", remainAmount, orderId);
+            throw new PointLedgerException(PointErrorCode.INVALID_REFUND_AMOUNT,
+                    "Refund amount exceeds available usage details. Remaining: " + remainAmount);
         }
     }
 

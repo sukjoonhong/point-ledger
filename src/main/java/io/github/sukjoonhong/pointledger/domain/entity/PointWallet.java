@@ -62,6 +62,11 @@ public class PointWallet extends BaseAuditEntity {
                 validateBalance(transaction.getAmount());
                 this.balance -= transaction.getAmount();
             }
+            case RE_EARN -> {
+                // 지갑 잔액 변경 없음 (Balance-Neutral)
+                // 이미 CANCEL_USE에서 전체 금액이 지갑에 반영되었으므로,
+                // RE_EARN은 만료된 Asset을 새로 찍어내는 역할만 수행합니다.
+            }
         }
 
         this.lastSequenceNum = transaction.getSequenceNum();

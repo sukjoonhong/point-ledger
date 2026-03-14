@@ -47,6 +47,9 @@ public class PointAsset {
     @Column(nullable = false)
     private PointSource source;
 
+    @Column(nullable = false)
+    private Integer sourcePriority;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PointAssetStatus status;
@@ -84,6 +87,7 @@ public class PointAsset {
                 .source(transaction.getSource())
                 .expirationDate(now.plusDays(expireDays))
                 .seqNum(transaction.getSequenceNum())
+                .sourcePriority(transaction.getSource().getPriority())
                 .build();
     }
 

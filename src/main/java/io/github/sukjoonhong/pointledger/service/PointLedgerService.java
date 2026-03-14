@@ -8,7 +8,7 @@ import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import io.github.sukjoonhong.pointledger.domain.type.PointSequenceStatus;
 import io.github.sukjoonhong.pointledger.domain.type.TaskStatus;
 import io.github.sukjoonhong.pointledger.repository.PointWalletRepository;
-import io.github.sukjoonhong.pointledger.service.event.PointTaskCapturedEvent;
+import io.github.sukjoonhong.pointledger.service.event.PointWalletRecoveryEvent;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +114,7 @@ public class PointLedgerService {
     }
 
     private void propagate(Long memberId) {
-        logger.info("[EVENT_PUBLISH] Publishing PointTaskCapturedEvent for MemberId: {}", memberId);
-        eventPublisher.publishEvent(new PointTaskCapturedEvent(memberId));
+        logger.info("[EVENT_PUBLISH] Publishing PointWalletRecoveryEvent for MemberId: {}", memberId);
+        eventPublisher.publishEvent(new PointWalletRecoveryEvent(memberId));
     }
 }

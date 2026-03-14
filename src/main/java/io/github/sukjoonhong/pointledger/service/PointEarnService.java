@@ -6,6 +6,7 @@ import io.github.sukjoonhong.pointledger.domain.entity.PointTransaction;
 import io.github.sukjoonhong.pointledger.domain.entity.PointWallet;
 import io.github.sukjoonhong.pointledger.domain.exception.PointErrorCode;
 import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
+import io.github.sukjoonhong.pointledger.domain.type.PointAssetStatus;
 import io.github.sukjoonhong.pointledger.repository.PointAssetRepository;
 import io.github.sukjoonhong.pointledger.support.BusinessTimeProvider;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,25 @@ public class PointEarnService {
 
         logger.info("Point asset created successfully. AssetID: {}, TxID: {}, Amount: {}",
                 asset.getId(), tx.getId(), tx.getAmount());
+    }
+
+    /**
+     * 재발급 포인트 적립 처리
+     */
+    @Transactional
+    public void handleReEarn(PointTransaction tx) {
+        PointAsset newAsset = PointAsset.builder()
+                .memberId(tx.getMemberId())
+                .transactionId(tx.getId())
+                .amount(tx.getAmount())
+                .remainingAmount(tx.getAmount())
+                .status(PointAssetStatus.ACTIVE)
+                .expirationDate(timeProvider.nowOffset().plusDays(policyManager.getExpireDays()))
+                .source(tx.getSource())
+                .build();
+
+        assetRepository.save(newAsset);
+        logger.info("[RE_EARN_ASSET_CREATED] New asset generated for expired refund. TxID: {}", tx.getId());
     }
 
     /**
