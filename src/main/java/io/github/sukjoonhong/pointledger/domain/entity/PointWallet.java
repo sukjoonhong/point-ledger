@@ -62,10 +62,21 @@ public class PointWallet extends BaseAuditEntity {
                 validateBalance(transaction.getAmount());
                 this.balance -= transaction.getAmount();
             }
+
+            // ==========================================================
+            // [!] CRITICAL NOTICE: RE_EARN(재적립) 처리 로직
+            // ----------------------------------------------------------
+            // 1. 설계 의도: 사용 취소 시 이미 만료된 자산에 대한 보상 처리
+            // 2. 일관성 모델: Eventually Consistent (최종 일관성)
+            // 3. 비고: 잔액 증가는 CANCEL_USE에서 선행됨 (Balance-Neutral)
+            // ==========================================================
             case RE_EARN -> {
-                // 지갑 잔액 변경 없음 (Balance-Neutral)
-                // 이미 CANCEL_USE에서 전체 금액이 지갑에 반영되었으므로,
-                // RE_EARN은 만료된 Asset을 새로 찍어내는 역할만 수행합니다.
+                /*
+                 * 이 단계에서는 지갑 잔액을 변경하지 않습니다. 이유는 CANCEL_USE 단계에서
+                 * 이미 전체 사용 취소 금액이 지갑 잔액에 합산되었기 때문입니다.
+                 * * RE_EARN은 '만료된 자산의 재생성'을 원장에 기록하여 전체 시퀀스의
+                 * 선형성(Linearity)을 보장하는 역할을 수행합니다.
+                 */
             }
         }
 
