@@ -32,16 +32,15 @@ public class PointTaskProcessor {
                 MAX_RETRY_LIMIT
         ).orElse(null);
 
-        if (task == null) return;
+        if (task == null || task.getStatus() == TaskStatus.COMPLETED) return;
 
         try {
-            ledgerProcessor.processBalanceUpdate(task);
+            ledgerProcessor.processBalanceUpdate(task.getTransaction());
             task.complete();
 
             logger.info("[TASK_SUCCESS] TaskID: {}, Key: {}",
                     task.getId(), task.getTransaction().getPointKey());
         } catch (Exception e) {
-            // 실패 시 상태 업데이트 (Managed 상태이므로 트랜잭션 종료 시 저장됨)
             task.fail(e.getMessage());
 
             logger.error("[TASK_EXECUTION_FAILED] TaskID: {}, Retry: {}/{}, Reason: {}",

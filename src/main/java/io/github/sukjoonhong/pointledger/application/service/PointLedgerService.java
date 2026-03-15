@@ -1,15 +1,14 @@
 package io.github.sukjoonhong.pointledger.application.service;
 
+import io.github.sukjoonhong.pointledger.application.service.event.PointEventPublisher;
+import io.github.sukjoonhong.pointledger.application.service.event.PointWalletRecoveryEvent;
 import io.github.sukjoonhong.pointledger.config.PointPolicyManager;
-import io.github.sukjoonhong.pointledger.domain.entity.PointTask;
+import io.github.sukjoonhong.pointledger.domain.entity.PointTransaction;
 import io.github.sukjoonhong.pointledger.domain.entity.PointWallet;
 import io.github.sukjoonhong.pointledger.domain.exception.PointErrorCode;
 import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import io.github.sukjoonhong.pointledger.domain.type.PointSequenceStatus;
-import io.github.sukjoonhong.pointledger.domain.type.TaskStatus;
 import io.github.sukjoonhong.pointledger.repository.PointWalletRepository;
-import io.github.sukjoonhong.pointledger.application.service.event.PointEventPublisher;
-import io.github.sukjoonhong.pointledger.application.service.event.PointWalletRecoveryEvent;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,64 +28,43 @@ public class PointLedgerService {
     private final PointPolicyManager policyManager;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void processBalanceUpdate(PointTask task) {
-        final var tx = task.getTransaction();
+    public void processBalanceUpdate(PointTransaction tx) {
+        // 1. 비관적 락으로 지갑 조회
+        PointWallet wallet = getOrCreateWalletWithLock(tx.getMemberId());
 
-        if (task.getStatus() == TaskStatus.COMPLETED) {
-            return;
+        if (wallet.isRecovering()) {
+            logger.warn("[WALLET_BUSY] Wallet is currently recovering. MemberID: {}", wallet.getMemberId());
+            throw new PointLedgerException(PointErrorCode.WALLET_UNDER_RECOVERY, "Wallet recovery in progress.");
         }
 
-        try {
-            // 1. 비관적 락으로 지갑 조회
-            PointWallet wallet = getOrCreateWalletWithLock(tx.getMemberId());
+        PointSequenceStatus status = sequenceValidator.validate(wallet.getLastSequenceNum(), tx.getSequenceNum());
 
-            if (wallet.isRecovering()) {
-                logger.warn("[WALLET_BUSY] Wallet is currently recovering. MemberID: {}", wallet.getMemberId());
-                throw new PointLedgerException(PointErrorCode.WALLET_UNDER_RECOVERY, "Wallet recovery in progress.");
+        // 2. 시퀀스 검증
+        switch (status) {
+            case ALREADY_PROCESSED -> {
+                logger.warn("[INGEST_SKIPPED] Already processed. Seq: {}", tx.getSequenceNum());
+                return;
             }
+            case GAP_DETECTED -> {
+                logger.info("[SEQUENCE_GAP] Gap detected. Initiating recovery event for MemberID: {}", tx.getMemberId());
 
-            PointSequenceStatus status = sequenceValidator.validate(wallet.getLastSequenceNum(), tx.getSequenceNum());
+                wallet.markAsRecovering();
+                walletRepository.save(wallet);
 
-            // 2. 시퀀스 검증
-            switch (status) {
-                case ALREADY_PROCESSED -> {
-                    logger.warn("[INGEST_SKIPPED] Already processed. Seq: {}", tx.getSequenceNum());
-                    task.complete();
-                    return;
-                }
-                case GAP_DETECTED -> {
-                    logger.info("[SEQUENCE_GAP] Gap detected. Initiating recovery event for MemberID: {}", tx.getMemberId());
+                propagate(tx.getMemberId());
 
-                    wallet.markAsRecovering();
-                    walletRepository.save(wallet);
-
-                    propagate(tx.getMemberId());
-
-                    throw new PointLedgerException(PointErrorCode.WALLET_UNDER_RECOVERY, "Gap detected, recovery initiated.");
-                }
-                case EXPECTED -> logger.debug("[SEQUENCE_OK] Sequence validated: {}", tx.getSequenceNum());
+                throw new PointLedgerException(PointErrorCode.WALLET_UNDER_RECOVERY, "Gap detected, recovery initiated.");
             }
-
-            // 3. 현재 트랜잭션 비즈니스 로직 처리
-            businessRouter.route(wallet, tx);
-
-            // 4. 지갑 상태 최종 반영
-            wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
-            walletRepository.save(wallet);
-
-            task.complete();
-
-            logger.info("[TASK_SUCCESS] TaskID: {}, Key: {}, NewBalance: {}, NewSeq: {}",
-                    task.getId(), tx.getPointKey(), wallet.getBalance(), wallet.getLastSequenceNum());
-
-        } catch (Exception e) {
-            task.fail(e.getMessage());
-
-            logger.error("[TASK_FAILED] TaskID: {}, Key: {}, Retry: {}, Error: {}",
-                    task.getId(), tx.getPointKey(), task.getRetryCount(), e.getMessage());
-
-            throw e;
+            case EXPECTED -> logger.debug("[SEQUENCE_OK] Sequence validated: {}", tx.getSequenceNum());
         }
+
+        // 3. 현재 트랜잭션 비즈니스 로직 처리
+        businessRouter.route(wallet, tx);
+
+        // 4. 지갑 상태 최종 반영
+        wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
+        walletRepository.save(wallet);
+
     }
 
     private PointWallet getOrCreateWalletWithLock(Long memberId) {
