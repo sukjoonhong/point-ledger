@@ -14,21 +14,4 @@ import java.util.Collection;
 import java.util.List;
 
 public interface PointOutboxRepository extends JpaRepository<PointOutbox, Long> {
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @QueryHints({
-            @QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2") // SKIP LOCKED
-    })
-    @Query("""
-                SELECT o FROM PointOutbox o 
-                WHERE o.status IN :statuses 
-                  AND o.retryCount < :maxRetryCount 
-                ORDER BY o.createdAt ASC
-            """)
-    List<PointOutbox> findRetryableEvents(
-            @Param("statuses") Collection<PointOutbox.OutboxStatus> statuses,
-            @Param("maxRetryCount") int maxRetryCount,
-            Pageable pageable
-    );
-
-    List<PointOutbox> findAllByStatus(PointOutbox.OutboxStatus status);
 }
