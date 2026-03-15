@@ -1,11 +1,13 @@
 package io.github.sukjoonhong.pointledger.repository;
 
 import io.github.sukjoonhong.pointledger.domain.entity.PointAsset;
+import io.github.sukjoonhong.pointledger.domain.type.PointAssetStatus;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,4 +21,6 @@ public interface PointAssetRepository extends JpaRepository<PointAsset, Long> {
     List<PointAsset> findAllForDeduction(@Param("memberId") Long memberId, Sort sort);
 
     Optional<PointAsset> findByPointKey(String pointKey);
+
+    List<PointAsset> findAllByStatusAndExpirationDateBefore(PointAssetStatus status, OffsetDateTime dateTime);
 }

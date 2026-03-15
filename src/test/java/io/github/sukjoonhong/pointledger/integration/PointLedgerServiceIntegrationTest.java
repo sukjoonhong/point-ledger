@@ -8,7 +8,7 @@ import io.github.sukjoonhong.pointledger.domain.type.PointTransactionType;
 import io.github.sukjoonhong.pointledger.repository.PointTaskRepository;
 import io.github.sukjoonhong.pointledger.repository.PointTransactionRepository;
 import io.github.sukjoonhong.pointledger.repository.PointWalletRepository;
-import io.github.sukjoonhong.pointledger.service.PointLedgerService;
+import io.github.sukjoonhong.pointledger.application.service.PointLedgerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
