@@ -35,9 +35,7 @@ public enum PointErrorCode {
 
     // 5. System (S): 인프라 및 알 수 없는 오류
     UNSUPPORTED_TX_TYPE("S001", "Unsupported transaction type.", HttpStatus.BAD_REQUEST),
-    INTERNAL_SERVER_ERROR("S002", "An unexpected system error occurred.", HttpStatus.INTERNAL_SERVER_ERROR),
-    TRANSACTION_ALREADY_APPLIED("S003", "Transaction result is already recorded.", HttpStatus.CONFLICT),
-    TASK_NOT_FOUND("S004", "Requested task not found.", HttpStatus.NOT_FOUND);
+    INTERNAL_SERVER_ERROR("S002", "An unexpected system error occurred.", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
     private final String message;

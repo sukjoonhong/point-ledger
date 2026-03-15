@@ -53,19 +53,19 @@ public class PointWallet extends BaseAuditEntity {
     public void apply(PointTransaction transaction, Long maxHoldingLimit) {
         validateSequence(transaction.getSequenceNum());
 
-        Long targetAmount = transaction.getAppliedAmount();
-        if (targetAmount == null) {
-            throw new IllegalStateException("Applied amount is missing in transaction.");
-        }
-
         switch (transaction.getType()) {
-            case EARN, RE_EARN, CANCEL_USE -> {
-                validateMaxHoldingLimit(targetAmount, maxHoldingLimit);
-                this.balance += targetAmount;
+            case EARN, CANCEL_USE -> {
+                validateMaxHoldingLimit(transaction.getAmount(), maxHoldingLimit);
+                this.balance += transaction.getAmount();
             }
             case USE, CANCEL_EARN -> {
-                validateBalance(targetAmount);
-                this.balance -= targetAmount;
+                validateBalance(transaction.getAmount());
+                this.balance -= transaction.getAmount();
+            }
+            case RE_EARN -> {
+                // 지갑 잔액 변경 없음 (Balance-Neutral)
+                // 이미 CANCEL_USE에서 전체 금액이 지갑에 반영되었으므로,
+                // RE_EARN은 만료된 Asset을 새로 찍어내는 역할만 수행합니다.
             }
         }
 

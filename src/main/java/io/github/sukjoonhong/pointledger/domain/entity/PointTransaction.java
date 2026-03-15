@@ -1,7 +1,5 @@
 package io.github.sukjoonhong.pointledger.domain.entity;
 
-import io.github.sukjoonhong.pointledger.domain.exception.PointErrorCode;
-import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import io.github.sukjoonhong.pointledger.domain.type.PointSource;
 import io.github.sukjoonhong.pointledger.domain.type.PointTransactionType;
 import jakarta.persistence.*;
@@ -14,8 +12,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @Table(name = "point_transaction", indexes = {
         @Index(name = "idx_tx__member_id_seq", columnList = "memberId, sequenceNum"),
-        @Index(name = "idx_tx__point_key", columnList = "pointKey", unique = true),
-        @Index(name = "idx_tx__original_key", columnList = "originalPointKey")
+        @Index(name = "idx_tx__point_key", columnList = "pointKey", unique = true), // 글로벌 멱등성 보장
+        @Index(name = "idx_tx__original_key", columnList = "originalPointKey")      // 원본 추적용 인덱스
 })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PointTransaction extends BaseAuditEntity {
@@ -23,16 +21,12 @@ public class PointTransaction extends BaseAuditEntity {
     private Long id;
 
     private Long memberId;
+    private Long amount;
 
     @Column(nullable = false)
-    private Long amount; // 원본 요청 금액
+    private String pointKey; // 이번 요청의 고유 키 (멱등성 기준)
 
-    private Long appliedAmount;
-
-    @Column(nullable = false)
-    private String pointKey;
-
-    private String originalPointKey;
+    private String originalPointKey; // 원본 적립/사용의 키 (추적용)
 
     private Long sequenceNum;
 
@@ -46,10 +40,16 @@ public class PointTransaction extends BaseAuditEntity {
     private String description;
 
     @Builder
-    public PointTransaction(Long id, Long memberId, Long amount, String pointKey,
-                            String originalPointKey, Long sequenceNum,
-                            PointTransactionType type, PointSource source,
-                            String orderId, String description) {
+    public PointTransaction(Long id,
+                            Long memberId,
+                            Long amount,
+                            String pointKey,
+                            String originalPointKey,
+                            Long sequenceNum,
+                            PointTransactionType type,
+                            PointSource source,
+                            String orderId,
+                            String description) {
         this.id = id;
         this.memberId = memberId;
         this.amount = amount;
@@ -60,15 +60,5 @@ public class PointTransaction extends BaseAuditEntity {
         this.source = source;
         this.orderId = orderId;
         this.description = description;
-    }
-
-    public void recordAppliedAmount(Long actualAppliedAmount) {
-        if (this.appliedAmount != null) {
-            throw new PointLedgerException(
-                    PointErrorCode.TRANSACTION_ALREADY_APPLIED,
-                    "TransactionID: " + this.id + " already has appliedAmount: " + this.appliedAmount
-            );
-        }
-        this.appliedAmount = actualAppliedAmount;
     }
 }
