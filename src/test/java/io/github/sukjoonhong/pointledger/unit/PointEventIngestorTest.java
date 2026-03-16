@@ -6,7 +6,7 @@ import io.github.sukjoonhong.pointledger.domain.entity.PointTransaction;
 import io.github.sukjoonhong.pointledger.infrastructure.lock.DistributedLockManager;
 import io.github.sukjoonhong.pointledger.repository.PointTaskRepository;
 import io.github.sukjoonhong.pointledger.repository.PointTransactionRepository;
-import io.github.sukjoonhong.pointledger.application.service.PointEventIngestor;
+import io.github.sukjoonhong.pointledger.application.service.ingress.PointEventIngestor;
 import io.github.sukjoonhong.pointledger.application.service.event.PointTaskCapturedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

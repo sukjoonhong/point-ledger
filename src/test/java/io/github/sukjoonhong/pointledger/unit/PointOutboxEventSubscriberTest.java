@@ -6,7 +6,7 @@ import io.github.sukjoonhong.pointledger.domain.entity.PointOutbox;
 import io.github.sukjoonhong.pointledger.infrastructure.messaging.PointMessagePublisher;
 import io.github.sukjoonhong.pointledger.repository.PointOutboxRepository;
 import io.github.sukjoonhong.pointledger.application.service.event.PointOutboxCapturedEvent;
-import io.github.sukjoonhong.pointledger.application.worker.PointOutboxRelayService;
+import io.github.sukjoonhong.pointledger.application.worker.subsciber.PointOutboxEventSubscriber;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,7 +23,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class PointOutboxRelayServiceTest {
+class PointOutboxEventSubscriberTest {
 
     @Mock
     private PointOutboxRepository outboxRepository;
@@ -38,7 +38,7 @@ class PointOutboxRelayServiceTest {
     private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
-    private PointOutboxRelayService relayService;
+    private PointOutboxEventSubscriber relayService;
 
     @Test
     @DisplayName("정상 흐름: 단건 이벤트를 발행한 후 PROCESSED 상태로 완료되어야 한다")

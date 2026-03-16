@@ -1,5 +1,7 @@
-package io.github.sukjoonhong.pointledger.application.service;
+package io.github.sukjoonhong.pointledger.application.service.core;
 
+import io.github.sukjoonhong.pointledger.application.service.PointBusinessRouter;
+import io.github.sukjoonhong.pointledger.application.service.PointSequenceValidator;
 import io.github.sukjoonhong.pointledger.application.service.event.PointEventPublisher;
 import io.github.sukjoonhong.pointledger.application.service.event.PointWalletRecoveryEvent;
 import io.github.sukjoonhong.pointledger.config.PointPolicyManager;
@@ -28,7 +30,7 @@ public class PointLedgerService {
     private final PointPolicyManager policyManager;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void processBalanceUpdate(PointTransaction tx) {
+    public void synchronizeWalletFromLedger(PointTransaction tx) {
         // 1. 비관적 락으로 지갑 조회
         PointWallet wallet = getOrCreateWalletWithLock(tx.getMemberId());
 

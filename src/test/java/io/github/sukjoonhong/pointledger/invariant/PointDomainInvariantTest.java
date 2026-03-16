@@ -141,7 +141,7 @@ class PointDomainInvariantTest {
                 .amount(amount)
                 .remainingAmount(amount)
                 .status(PointAssetStatus.ACTIVE)
-                .seqNum(seq)
+                .sequenceNum(seq)
                 .expirationDate(timeProvider.nowOffset().plusDays(30)) // Mock 사용
                 .build();
     }

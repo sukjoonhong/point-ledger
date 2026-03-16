@@ -14,14 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Profile("worker & !scheduler")
 @Component
 @RequiredArgsConstructor
-public class PointRecoveryProcessor {
-    private final Logger logger = LoggerFactory.getLogger(PointRecoveryProcessor.class);
+public class PointWalletStateRestorer {
+    private final Logger logger = LoggerFactory.getLogger(PointWalletStateRestorer.class);
     private final PointTransactionRepository transactionRepository;
     private final PointWalletRepository walletRepository;
     private final PointReplayStrategy defaultStrategy;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void processRecovery(Long memberId, PointReplayStrategy strategy) {
+    public void restore(Long memberId, PointReplayStrategy strategy) {
         PointReplayStrategy activeStrategy = (strategy != null) ? strategy : defaultStrategy;
 
         // 1. 비관적 락으로 지갑 점유

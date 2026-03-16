@@ -1,7 +1,7 @@
 package io.github.sukjoonhong.pointledger.application.api.v1;
 
 import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
-import io.github.sukjoonhong.pointledger.application.service.PointEventIngestor;
+import io.github.sukjoonhong.pointledger.application.service.ingress.PointEventIngestor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;

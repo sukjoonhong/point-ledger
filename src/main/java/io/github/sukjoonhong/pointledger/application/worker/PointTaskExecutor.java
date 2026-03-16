@@ -3,7 +3,7 @@ package io.github.sukjoonhong.pointledger.application.worker;
 import io.github.sukjoonhong.pointledger.domain.entity.PointTask;
 import io.github.sukjoonhong.pointledger.domain.type.TaskStatus;
 import io.github.sukjoonhong.pointledger.repository.PointTaskRepository;
-import io.github.sukjoonhong.pointledger.application.service.PointLedgerService;
+import io.github.sukjoonhong.pointledger.application.service.core.PointLedgerService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,15 +17,15 @@ import java.util.List;
 @Profile("worker & !scheduler")
 @Component
 @RequiredArgsConstructor
-public class PointTaskProcessor {
-    private final Logger logger = LoggerFactory.getLogger(PointTaskProcessor.class);
+public class PointTaskExecutor {
+    private final Logger logger = LoggerFactory.getLogger(PointTaskExecutor.class);
     private static final int MAX_RETRY_LIMIT = 3;
 
     private final PointTaskRepository taskRepository;
-    private final PointLedgerService ledgerProcessor;
+    private final PointLedgerService ledgerService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void processTask(Long taskId) {
+    public void execute(Long taskId) {
         PointTask task = taskRepository.findProcessableTask(
                 taskId,
                 List.of(TaskStatus.READY, TaskStatus.FAILED),
@@ -35,7 +35,7 @@ public class PointTaskProcessor {
         if (task == null || task.getStatus() == TaskStatus.COMPLETED) return;
 
         try {
-            ledgerProcessor.processBalanceUpdate(task.getTransaction());
+            ledgerService.synchronizeWalletFromLedger(task.getTransaction());
             task.complete();
 
             logger.info("[TASK_SUCCESS] TaskID: {}, Key: {}",

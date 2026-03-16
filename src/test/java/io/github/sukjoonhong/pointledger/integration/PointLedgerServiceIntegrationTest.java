@@ -8,7 +8,7 @@ import io.github.sukjoonhong.pointledger.domain.type.PointTransactionType;
 import io.github.sukjoonhong.pointledger.repository.PointTaskRepository;
 import io.github.sukjoonhong.pointledger.repository.PointTransactionRepository;
 import io.github.sukjoonhong.pointledger.repository.PointWalletRepository;
-import io.github.sukjoonhong.pointledger.application.service.PointLedgerService;
+import io.github.sukjoonhong.pointledger.application.service.core.PointLedgerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -62,7 +62,7 @@ class PointLedgerServiceIntegrationTest {
 
     @Test
     @DisplayName("비관적 락 검증: 동시 요청 중 정합성이 맞는 것들은 유실 없이 반영되어야 한다")
-    void processBalanceUpdate_Concurrency_Test() throws InterruptedException {
+    void synchronizeWalletFromLedger_Concurrency_Test() throws InterruptedException {
         // given
         int threadCount = 10;
         ExecutorService executorService = Executors.newFixedThreadPool(threadCount);
@@ -87,7 +87,7 @@ class PointLedgerServiceIntegrationTest {
                             .transaction(tx)
                             .build());
 
-                    walletUpdater.processBalanceUpdate(task);
+                    walletUpdater.synchronizeWalletFromLedger(task);
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     logger.warn("[TASK_SKIPPED] TaskID: {}, Reason: {}", seqNum, e.getMessage());
@@ -115,7 +115,7 @@ class PointLedgerServiceIntegrationTest {
 
     @Test
     @DisplayName("롤백 검증: 잔액 부족 시 트랜잭션이 롤백되어 지갑 상태가 유지되어 equator야 한다")
-    void processBalanceUpdate_Rollback_Test() {
+    void synchronizeWalletFromLedger_Rollback_Test() {
         // given
         PointWallet initialWallet = walletRepository.findByMemberId(testMemberId).orElseThrow();
         Long initialBalance = initialWallet.getBalance();
@@ -137,7 +137,7 @@ class PointLedgerServiceIntegrationTest {
 
         // when
         try {
-            walletUpdater.processBalanceUpdate(task);
+            walletUpdater.synchronizeWalletFromLedger(task);
         } catch (Exception e) {
             logger.info("[EXPECTED_EXCEPTION] Rollback triggered as intended: {}", e.getMessage());
         }

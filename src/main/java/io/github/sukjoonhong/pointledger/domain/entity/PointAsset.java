@@ -58,7 +58,7 @@ public class PointAsset {
     private OffsetDateTime expirationDate;
 
     @Column(nullable = false)
-    private Long seqNum;
+    private Long sequenceNum;
 
     /**
      * 비즈니스 정책을 검증하며 활성 자산을 생성합니다.
@@ -86,7 +86,7 @@ public class PointAsset {
                 .status(PointAssetStatus.ACTIVE)
                 .source(transaction.getSource())
                 .expirationDate(now.plusDays(expireDays))
-                .seqNum(transaction.getSequenceNum())
+                .sequenceNum(transaction.getSequenceNum())
                 .sourcePriority(transaction.getSource().getPriority())
                 .build();
     }

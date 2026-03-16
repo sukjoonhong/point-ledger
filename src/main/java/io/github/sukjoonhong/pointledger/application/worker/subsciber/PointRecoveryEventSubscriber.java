@@ -1,7 +1,8 @@
-package io.github.sukjoonhong.pointledger.application.worker;
+package io.github.sukjoonhong.pointledger.application.worker.subsciber;
 
 import io.github.sukjoonhong.pointledger.application.service.event.PointEventSubscriber;
 import io.github.sukjoonhong.pointledger.application.service.event.PointWalletRecoveryEvent;
+import io.github.sukjoonhong.pointledger.application.worker.PointWalletStateRestorer;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,17 +12,17 @@ import org.springframework.stereotype.Service;
 @Profile("worker & !scheduler")
 @Service
 @RequiredArgsConstructor
-public class PointRecoveryRelayService implements PointEventSubscriber<PointWalletRecoveryEvent> {
+public class PointRecoveryEventSubscriber implements PointEventSubscriber<PointWalletRecoveryEvent> {
 
-    private final Logger logger = LoggerFactory.getLogger(PointRecoveryRelayService.class);
-    private final PointRecoveryProcessor recoveryProcessor;
+    private final Logger logger = LoggerFactory.getLogger(PointRecoveryEventSubscriber.class);
+    private final PointWalletStateRestorer walletStateRestorer;
 
     @Override
     public void onEvent(PointWalletRecoveryEvent event) {
         try {
             logger.info("[RECOVERY_EVENT_RECEIVED] Initiating recovery for MemberID: {}", event.memberId());
 
-            recoveryProcessor.processRecovery(event.memberId(), null);
+            walletStateRestorer.restore(event.memberId(), null);
 
         } catch (Exception e) {
             logger.error("[RECOVERY_FAILED] Critical failure for MemberID: {}. Reason: {}",

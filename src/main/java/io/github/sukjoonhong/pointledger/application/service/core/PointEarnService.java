@@ -1,4 +1,4 @@
-package io.github.sukjoonhong.pointledger.application.service;
+package io.github.sukjoonhong.pointledger.application.service.core;
 
 import io.github.sukjoonhong.pointledger.config.PointPolicyManager;
 import io.github.sukjoonhong.pointledger.domain.entity.PointAsset;
@@ -60,7 +60,7 @@ public class PointEarnService {
                 .expirationDate(timeProvider.nowOffset().plusDays(policyManager.getExpireDays()))
                 .source(tx.getSource())
                 .sourcePriority(tx.getSource().getPriority())
-                .seqNum(tx.getSequenceNum())
+                .sequenceNum(tx.getSequenceNum())
                 .build();
 
         assetRepository.save(newAsset);

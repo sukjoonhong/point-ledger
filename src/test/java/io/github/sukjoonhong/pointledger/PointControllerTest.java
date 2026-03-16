@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
 import io.github.sukjoonhong.pointledger.domain.type.PointSource;
 import io.github.sukjoonhong.pointledger.domain.type.PointTransactionType;
-import io.github.sukjoonhong.pointledger.application.service.PointEventIngestor;
+import io.github.sukjoonhong.pointledger.application.service.ingress.PointEventIngestor;
 import io.github.sukjoonhong.pointledger.application.api.v1.PointController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

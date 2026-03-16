@@ -1,5 +1,6 @@
-package io.github.sukjoonhong.pointledger.application.service;
+package io.github.sukjoonhong.pointledger.application.service.ingress;
 
+import io.github.sukjoonhong.pointledger.application.service.PointSequenceManager;
 import io.github.sukjoonhong.pointledger.application.service.event.PointEventPublisher;
 import io.github.sukjoonhong.pointledger.application.service.event.PointTaskCapturedEvent;
 import io.github.sukjoonhong.pointledger.infrastructure.lock.DistributedLockManager;
