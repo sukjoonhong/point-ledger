@@ -26,7 +26,7 @@
 
 본 프로젝트는 연간 5조 원 규모의 트래픽을 처리하는 상용 서비스 환경을 전제로 설계되었으며, 이를 지원하는 AWS 인프라 아키텍처는 다음과 같습니다. H2 파일 기반의 로컬 환경과 달리, 프로덕션 환경에서는 Amazon RDS를 사용하여 원장의 신뢰성을 극대화합니다.
 
-![AWS Infrastructure Diagram](src/main/resources/static/aws.png)
+![AWS Infrastructure Diagram](/src/main/resources/static/aws.png)
 
 ### 2.1 인프라 핵심 설계 포인트
 
