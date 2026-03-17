@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-@Profile("worker & !scheduler")
+@Profile("worker")
 @Component
 @RequiredArgsConstructor
 public class PointTaskExecutor {

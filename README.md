@@ -1,141 +1,98 @@
-# **Point Ledger System**
+# Point Ledger System
 
-본 프로젝트는 대규모 트래픽 환경에서도 데이터 무결성을 완벽하게 보장하도록 설계된 고성능 무료 포인트 관리 시스템입니다. 자산 관리의 핵심인 '신뢰'를 기술적으로 구현하기 위해 이벤트 기반 아키텍처와 원장 중심 설계를 채택했습니다.
+본 프로젝트는 데이터 무결성을 최우선으로 설계된 원장(Ledger) 중심의 포인트 관리 시스템입니다. 단순한 잔액 관리를 넘어, 포인트의 적립부터 사용, 만료, 그리고 부분 취소에 이르는 전체 라이프사이클을 추적
+가능한 데이터 구조로 구현했습니다.
 
-## **기술 스택**
+## 기술 스택
 
-- **Language**: Java 21
-- **Framework**: Spring Boot 3.x
-- **Database**: H2 (In-memory)
-- **Build Tool**: Gradle
-
----
-
-## **실행 방법**
-
-### **1. 빌드 및 실행**
-
-터미널에서 아래 명령어를 실행하십시오. Java 21 환경이 필요합니다.
-
-**Bash**
-
-```shell
-# 빌드 및 로컬 프로파일 실행
-./gradlew clean build
-./gradlew bootRun --args='--spring.profiles.active=local'
-```
----
-
-## **아키텍처 설계 원칙 (Architecture)**
-
-### **1. 원장 중심 설계 (Ledger-first Design)**
-
-포인트 시스템의 가장 신뢰할 수 있는 데이터의 원천(Source of Truth)을 거래 원장에 둡니다. 잔액(Balance)은 원장으로부터 관리되는 파생 상태(Derived State)로 취급하며, 모든 상태 변화는 원장의 기록을 통해 증명됩니다.
-
-### **2. Exactly-once 처리를 위한 이벤트 기반 아키텍처**
-
-자산 데이터의 본질은 무결성에 있으며, 단 한 건의 데이터 유실이나 중복 발행도 허용할 수 없습니다. 이를 위해 메시지 기반 아키텍처를 도입하여 복잡한 분산 환경에서도 Exactly-once 처리를 보장하고 원장 기록의 신뢰성을 확보했습니다.
-
-### **3. 후처리 로직의 결합도 분리**
-
-비즈니스 핵심 로직과 부가적인 후처리 로직을 Outbox 이벤트를 기반으로 분리했습니다. 이를 통해 시스템 간 결합도를 낮추고 서비스 확장에 유연하게 대응할 수 있는 구조를 설계했습니다.
-
-### **4. 고성능 무결성 검증 전략**
-
-데이터베이스의 수평적 확장성을 확보하고 동시성 제어 시 발생할 수 있는 데드락(Deadlock)을 방지하기 위해 물리적인 외래키(FK) 제약조건을 의도적으로 생략했습니다. 대신 인덱스 최적화와 애플리케이션 레이어(PointLedgerService)에서의 철저한 검증을 통해 논리적 무결성을 유지합니다.
+- Language: Java 21 (LTS)
+- Framework: Spring Boot 3.4.3
+- Database: H2 (File/In-memory)
+- Persistence: Spring Data JPA (Hibernate)
+- Concurrency: Pessimistic Locking (DB Level)
 
 ---
 
-## **핵심 기술적 의사결정**
-1. 원장 중심 설계 (Ledger-first Design)
-   포인트 시스템의 가장 신뢰할 수 있는 데이터의 원천(Source of Truth)을 거래 원장에 둡니다. 잔액(Balance)은 원장으로부터 관리되는 파생 상태(Derived State)로 취급하며, 모든 상태 변화는 원장의 기록을 통해 증명됩니다.
+## 실행 방법
 
-2. Exactly-once 처리를 위한 이벤트 기반 아키텍처
-   자산 데이터의 본질은 무결성에 있으며, 단 한 건의 데이터 유실이나 중복 발행도 허용할 수 없습니다. 이를 위해 메시지 기반 아키텍처를 도입하여 복잡한 분산 환경에서도 Exactly-once 처리를 보장하고 원장 기록의 신뢰성을 확보했습니다.
+### 1. 애플리케이션 실행
 
-3. 후처리 로직의 결합도 분리
-   비즈니스 핵심 로직과 부가적인 후처리 로직을 Outbox 이벤트를 기반으로 분리했습니다. 이를 통해 시스템 간 결합도를 낮추고 서비스 확장에 유연하게 대응할 수 있는 구조를 설계했습니다.
----
-## **엔터프라이즈급 기술적 의사결정 (ADR)**
-본 프로젝트는 연간 5조 원 규모의 트래픽과 DB 샤딩 환경을 전제로 설계되었습니다. H2 환경은 증명을 위한 최소 런타임일 뿐이며, 모든 핵심 로직은 분산 시스템의 복잡성을 해결하는 데 초점이 맞춰져 있습니다.
+애플리케이션은 18080 포트에서 동작하며, API 서버와 비동기 워커가 동시에 활성화됩니다.
 
-1. 3중 멱등성 방어 (3-Layer Idempotency)
-   단일 노드를 넘어선 분산 환경에서의 정합성을 위해 3단계 방어막을 구축했습니다.
-
-L1 (Local Lock): Caffeine Cache를 활용해 Hot-key 중복 요청을 앱 입구에서 컷트하여 인프라 부하를 최소화합니다.
-
-L2 (Distributed Lock): DistributedLockManager 인터페이스를 통해 분산 락을 추상화했습니다. (현재 로컬 구현체이나 Redis 등으로 즉시 교체 가능)
-
-L3 (Database Unique Index): 최후의 보루로 DB 제약 조건을 사용하여 데이터 무결성을 물리적으로 보장합니다.
-
-2. Transactional Outbox Pattern
-   메시지 브로커와 DB 트랜잭션의 원자성을 보장하기 위해 도입했습니다. 비즈니스 로직 성공 시 이벤트를 point_outbox 테이블에 저장하고, 별도의 릴레이 서비스가 이를 발행함으로써 메시지 유실 없는 At-Least-Once Delivery를 보장합니다.
-
-3. 시퀀스 번호 및 자가 치유(Self-healing) 리플레이
-   분산 환경에서 이벤트 순서가 뒤바뀌거나 누락되는 시나리오에 대응합니다.
-
-지갑별 시퀀스 번호를 엄격히 관리하여 상태의 **선형성(Linearity)**을 유지합니다.
-
-시퀀스 갭(Gap) 감지 시, 누락된 트랜잭션을 다시 읽어와 재현(Replay)하는 로직을 통해 원장의 무결성을 강제로 동기화합니다.
-
-4. 1원 단위 추적성 (Full Traceability)
-   특정 적립 자산이 어떤 주문에서 소진되었는지, 혹은 특정 주문이 어떤 자산(ADMIN/ORDER 등)들로부터 구성되었는지 1원 단위로 추적할 수 있는 PointUsageDetail 구조를 갖추고 있습니다.
-
-관리자 수기 지급 건(ADMIN)에 대한 우선 차감 정책 및 식별 기능을 통해 정산 투명성을 확보했습니다.
-
-5. 단일 아티팩트 기반의 역할 격리 배포 (Multi-Role Deployment)
-   본 프로젝트는 단일 코드베이스를 유지하되, 런타임 프로파일 주입을 통해 서버 노드의 역할을 API, Worker, Scheduler로 명확히 분리하여 배포하는 전략을 채택했습니다.
-
-    - 컴포넌트 스캔 제어: @Profile 표현식을 활용해 각 노드에 필요한 최소한의 Bean만 로드함으로써 리소스 점유를 최적화하고 불필요한 엔드포인트 노출을 차단합니다.
-    - 운영 유연성 및 확장성: 동일한 비즈니스 로직(Service/Domain)을 공유하므로 노드 간 버전 불일치 리스크를 제거하며, 트래픽 특성에 따라 특정 역할의 노드만 개별적으로 스케일 아웃(Scale-out) 할 수 있는 구조를 갖추고 있습니다.
-    - 장애 전파 차단: 워커 노드의 리소스 고갈이 API 노드의 가용성에 영향을 주지 않도록 물리적 실행 환경을 분리하여 시스템 전체의 안정성을 확보했습니다.
----
-## **API Specification**
-
-### **1. 포인트 이벤트 발행 (Enqueue)**
-
-모든 적립, 사용, 취소 요청은 이 엔드포인트를 통해 비동기로 접수됩니다.
-
-- **URL**: `POST /v1/points/enqueue`
-- **Status**: `202 Accepted`
-
-### **Request Body (예시: 적립)**
-
-**JSON**
-
-```json lines
-// [적립 예시]
-{
-    "memberId": 1001,
-    "amount": 5000,
-    "pointKey": "REQ_EARN_001",
-    "originalPointKey": null,
-    "type": "EARN",
-    "sequenceNum": 1
-}
-
-// [적립 취소 예시]
-{
-    "memberId": 1001,
-    "amount": 5000,
-    "pointKey": "REQ_CANCEL_001", // 취소 요청 자체의 유니크 키
-    "originalPointKey": "REQ_EARN_001", // 원본 적립의 키를 참조
-    "type": "CANCEL_EARN",
-    "sequenceNum": 2
-}
+```bash
+# 빌드 및 실행 (Java 21 환경 필요)
+./gradlew clean bootRun --args='--spring.profiles.active=local,api,worker'
 ```
 
+### 2. 시나리오 테스트 (Shell Scripts)
+
+터미널 환경에서 시스템의 핵심 기능을 즉시 검증할 수 있도록 curl 기반의 쉘 스크립트를 제공합니다.
+
+```bash
+# 스크립트 실행 권한 부여
+chmod +x scripts/*.sh
+
+# [시나리오 1] 동기 방식 (관리자 API를 통한 직접 제어 및 즉시 반영)
+./scripts/sync-scenario.sh
+
+# [시나리오 2] 비동기 방식 (이벤트 접수 및 워커를 통한 순차 처리)
+./scripts/async-scenario.sh
+
+# [시나리오 3] 통합 조회 및 데이터 추적 API 호출
+./scripts/query-apis.sh
+```
 
 ---
 
-## **도메인 규칙 및 정책**
+## 주요 기능 및 API 명세
 
-- **적립 한도**: 1회 최소 1P ~ 최대 10만P (정책 설정으로 제어 가능)
-- **보유 한도**: 개인별 최대 보유 가능 금액 제한 설정 가능
-- **사용 우선순위**
-    1. 관리자 수기 지급(ADMIN) 포인트 우선 차감
-    2. 만료일이 짧게 남은 순서(Early Expire)로 차감
-- **사용 취소**: 만료된 포인트 취소 시 신규 적립(Compensation) 처리를 통해 히스토리 투명성 확보
-- **적립 취소**: 사용된 이력이 있는 적립 건은 취소 불가
+### 1. 관리자 서비스 (Synchronous)
+
+운영 도구 또는 백오피스에서 직접 원장을 조작할 때 사용합니다.
+
+* POST /v1/admin/points/issue: 포인트 수동 적립
+
+* POST /v1/admin/points/deduct: 포인트 직접 차감 (주문 번호 기반)
+
+* POST /v1/admin/points/revert-deduction: 기존 차감 건에 대한 부분/전체 취소
+
+### 2. 고성능 이벤트 접수 (Asynchronous)
+
+대규모 트래픽 환경에서 API 응답 속도를 최적화하기 위해 이벤트를 큐잉 처리합니다.
+
+* POST /v1/points/enqueue: 비동기 포인트 처리 요청 접수 (Ingestor)
+
+### 3. 데이터 추적 및 조회 (Tracing)
+
+CQS(Command Query Separation) 원칙에 따라 조회 전용 서비스를 분리하여 제공합니다.
+
+* GET /v1/points/tracing/members/{id}/summary: 멤버별 통합 요약 (잔액, 활성 자산 리스트, 최근 내역 페이징)
+
+* GET /v1/points/tracing/assets/{id}: 특정 적립 건(Asset)의 사용 경로 추적
+
+* GET /v1/points/tracing/orders/{id}: 특정 주문(Order)에서 소모된 포인트의 출처 추적
 
 ---
+## 모니터링 및 디버깅
+H2 데이터베이스 콘솔: http://localhost:18080/h2-console
+
+JDBC URL: jdbc:h2:file:./data/pointdb
+
+User: sa / Password: (없음)
+
+---
+## 인터랙티브 API 명세 (Swagger)
+로컬 개발 환경에서는 Swagger UI를 통해 전체 API 명세를 확인하고 직접 테스트할 수 있습니다.
+(단, `local` 프로파일이 활성화된 상태에서만 접근 가능합니다.)
+
+- Swagger UI: http://localhost:18080/swagger-ui/index.html
+- OpenAPI Spec: http://localhost:18080/v3/api-docs
+
+---
+
+## 상세 설계 및 아키텍처
+
+비관적 락을 통한 동시성 제어 전략, 시퀀스 번호를 이용한 멱등성 보장 로직, 만료 포인트의 LIFO 기반 취소 정책 등 기술적 의사결정에 대한 상세 내용은 별도의 문서를 참조하십시오.
+
+- [ARCHITECTURE.md 바로가기](./docs/ARCHITECTURE.md)
+- [ERD.md (엔티티 관계도 및 데이터 구조) 바로가기](./src/main/resources/docs/ERD.md)

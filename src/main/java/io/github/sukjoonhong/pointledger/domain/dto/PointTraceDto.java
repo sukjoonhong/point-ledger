@@ -1,6 +1,7 @@
 package io.github.sukjoonhong.pointledger.domain.dto;
 
 import io.github.sukjoonhong.pointledger.domain.type.PointSource;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -8,6 +9,35 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 public class PointTraceDto {
+
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    public static class MemberPointSummaryResponse {
+        private Long memberId;
+        private Long currentBalance;
+        private Integer activeAssetCount;
+        private List<AssetSummary> activeAssets;
+        private org.springframework.data.domain.Page<TransactionSummary> recentTransactions;
+
+        @Getter @Builder
+        public static class AssetSummary {
+            private Long assetId;
+            private String pointKey;
+            private Long remainingAmount;
+            private String status;
+            private java.time.OffsetDateTime expirationDate;
+        }
+
+        @Getter @Builder
+        public static class TransactionSummary {
+            private String pointKey;
+            private String type;
+            private Long amount;
+            private String orderId;
+            private java.time.OffsetDateTime createdAt;
+        }
+    }
 
     /**
      * 특정 적립 자산의 사용 현황 (적립 기준 추적)

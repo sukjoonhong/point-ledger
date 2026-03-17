@@ -32,8 +32,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         "point-ledger.policy.expire-days=365",
         "point-ledger.policy.max-free-point-holding-limit=1000000"
 })
-class PointLedgerServiceIntegrationTest {
-    private final Logger logger = LoggerFactory.getLogger(PointLedgerServiceIntegrationTest.class);
+class PointConsistencyIntegrityTest {
+    private final Logger logger = LoggerFactory.getLogger(PointConsistencyIntegrityTest.class);
 
     @Autowired private PointTransactionRepository transactionRepository;
     @Autowired private PointTaskRepository taskRepository;
@@ -87,7 +87,7 @@ class PointLedgerServiceIntegrationTest {
                             .transaction(tx)
                             .build());
 
-                    walletUpdater.synchronizeWalletFromLedger(task);
+                    walletUpdater.synchronizeWalletFromLedger(task.getTransaction());
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     logger.warn("[TASK_SKIPPED] TaskID: {}, Reason: {}", seqNum, e.getMessage());
@@ -137,7 +137,7 @@ class PointLedgerServiceIntegrationTest {
 
         // when
         try {
-            walletUpdater.synchronizeWalletFromLedger(task);
+            walletUpdater.synchronizeWalletFromLedger(tx);
         } catch (Exception e) {
             logger.info("[EXPECTED_EXCEPTION] Rollback triggered as intended: {}", e.getMessage());
         }

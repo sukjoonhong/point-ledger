@@ -1,5 +1,6 @@
 package io.github.sukjoonhong.pointledger.unit;
 
+import io.github.sukjoonhong.pointledger.application.service.event.PointEventPublisher;
 import io.github.sukjoonhong.pointledger.domain.dto.PointCommand;
 import io.github.sukjoonhong.pointledger.domain.entity.PointTask;
 import io.github.sukjoonhong.pointledger.domain.entity.PointTransaction;
@@ -28,7 +29,7 @@ class PointEventIngestorTest {
     @Mock private PointTransactionRepository transactionRepository;
     @Mock private PointTaskRepository taskRepository;
     @Mock private DistributedLockManager lockManager;
-    @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private PointEventPublisher eventPublisher;
 
     @InjectMocks
     private PointEventIngestor pointEventIngestor;
@@ -71,7 +72,7 @@ class PointEventIngestorTest {
         verify(taskRepository, times(1)).save(any(PointTask.class));
 
         // [이벤트 검증] 캡처 이벤트가 실제로 발행되었는지 확인
-        verify(eventPublisher, times(1)).publishEvent(any(PointTaskCapturedEvent.class));
+        verify(eventPublisher, times(1)).publish(any(PointTaskCapturedEvent.class));
     }
 
     @Test
@@ -91,6 +92,6 @@ class PointEventIngestorTest {
         // then
         verify(transactionRepository, never()).save(any());
         verify(taskRepository, never()).save(any());
-        verify(eventPublisher, never()).publishEvent(any());
+        verify(eventPublisher, never()).publish(any());
     }
 }

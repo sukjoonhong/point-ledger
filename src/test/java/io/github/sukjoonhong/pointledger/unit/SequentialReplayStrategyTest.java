@@ -31,8 +31,6 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SequentialReplayStrategyTest {
-
-    // [수정] 바뀐 의존성에 맞춰 Mock 교체
     @Mock private PointBusinessRouter businessRouter;
     @Mock private PointSequenceValidator sequenceValidator;
     @Mock private PointPolicyManager policyManager;

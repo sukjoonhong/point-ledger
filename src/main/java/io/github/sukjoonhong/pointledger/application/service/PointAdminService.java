@@ -1,7 +1,7 @@
 package io.github.sukjoonhong.pointledger.application.service;
 
-import io.github.sukjoonhong.pointledger.application.api.v1.dto.*;
 import io.github.sukjoonhong.pointledger.config.PointPolicyManager;
+import io.github.sukjoonhong.pointledger.domain.dto.*;
 import io.github.sukjoonhong.pointledger.domain.entity.PointAsset;
 import io.github.sukjoonhong.pointledger.domain.entity.PointTransaction;
 import io.github.sukjoonhong.pointledger.domain.entity.PointWallet;
@@ -19,16 +19,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 동기 API를 위한 Facade 서비스.
- * 기존 비동기 파이프라인(enqueue → queue → process)의 핵심 컴포넌트를
- * 단일 트랜잭션 내에서 직접 호출하여 즉시 결과를 반환합니다.
- */
 @Service
 @RequiredArgsConstructor
-public class PointFacadeService {
+public class PointAdminService {
 
-    private final Logger logger = LoggerFactory.getLogger(PointFacadeService.class);
+    private final Logger logger = LoggerFactory.getLogger(PointAdminService.class);
 
     private final PointWalletRepository walletRepository;
     private final PointTransactionRepository transactionRepository;
@@ -36,11 +31,8 @@ public class PointFacadeService {
     private final PointBusinessRouter businessRouter;
     private final PointPolicyManager policyManager;
 
-    // ──────────────────────────────────────────────
-    // 적립
-    // ──────────────────────────────────────────────
     @Transactional
-    public PointResponse earn(PointEarnRequest request) {
+    public PointResponse issuePoints(PointEarnRequest request) {
         PointWallet wallet = getOrCreateWalletWithLock(request.memberId());
         long nextSeq = wallet.getLastSequenceNum() + 1;
 
@@ -60,24 +52,20 @@ public class PointFacadeService {
         wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
         walletRepository.save(wallet);
 
-        logger.info("[SYNC_EARN] PointKey: {}, Amount: {}, Balance: {}",
+        logger.info("[ADMIN_EARN] PointKey: {}, Amount: {}, NewBalance: {}",
                 tx.getPointKey(), tx.getAmount(), wallet.getBalance());
 
-        return toResponse(tx, wallet, "포인트가 적립되었습니다.");
+        return toResponse(tx, wallet, "Points issued successfully.");
     }
 
-    // ──────────────────────────────────────────────
-    // 적립 취소
-    // ──────────────────────────────────────────────
     @Transactional
-    public PointResponse cancelEarn(PointCancelEarnRequest request) {
+    public PointResponse revertEarn(PointCancelEarnRequest request) {
         PointWallet wallet = getOrCreateWalletWithLock(request.memberId());
         long nextSeq = wallet.getLastSequenceNum() + 1;
 
-        // 원본 적립 자산 조회하여 금액 확인
         PointAsset originalAsset = assetRepository.findByPointKey(request.originalPointKey())
                 .orElseThrow(() -> new PointLedgerException(PointErrorCode.ASSET_NOT_FOUND,
-                        "원본 적립 내역을 찾을 수 없습니다. PointKey: " + request.originalPointKey()));
+                        "Original asset not found. PointKey: " + request.originalPointKey()));
 
         PointTransaction tx = saveTransaction(
                 request.memberId(),
@@ -87,7 +75,7 @@ public class PointFacadeService {
                 nextSeq,
                 PointTransactionType.CANCEL_EARN,
                 originalAsset.getSource(),
-                "적립 취소: " + request.originalPointKey(),
+                "Revert earn: " + request.originalPointKey(),
                 null
         );
 
@@ -95,17 +83,14 @@ public class PointFacadeService {
         wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
         walletRepository.save(wallet);
 
-        logger.info("[SYNC_CANCEL_EARN] PointKey: {}, OriginalKey: {}, CancelledAmount: {}, Balance: {}",
+        logger.info("[ADMIN_REVERT_EARN] PointKey: {}, OriginalKey: {}, RevertedAmount: {}, NewBalance: {}",
                 tx.getPointKey(), request.originalPointKey(), tx.getAmount(), wallet.getBalance());
 
-        return toResponse(tx, wallet, "적립이 취소되었습니다.");
+        return toResponse(tx, wallet, "Earn transaction reverted successfully.");
     }
 
-    // ──────────────────────────────────────────────
-    // 사용
-    // ──────────────────────────────────────────────
     @Transactional
-    public PointResponse use(PointUseRequest request) {
+    public PointResponse deductPoints(PointUseRequest request) {
         PointWallet wallet = getOrCreateWalletWithLock(request.memberId());
         long nextSeq = wallet.getLastSequenceNum() + 1;
 
@@ -125,17 +110,14 @@ public class PointFacadeService {
         wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
         walletRepository.save(wallet);
 
-        logger.info("[SYNC_USE] PointKey: {}, OrderId: {}, Amount: {}, Balance: {}",
+        logger.info("[ADMIN_DEDUCT] PointKey: {}, OrderId: {}, Amount: {}, NewBalance: {}",
                 tx.getPointKey(), request.orderId(), tx.getAmount(), wallet.getBalance());
 
-        return toResponse(tx, wallet, "포인트가 사용되었습니다.");
+        return toResponse(tx, wallet, "Points deducted successfully.");
     }
 
-    // ──────────────────────────────────────────────
-    // 사용 취소
-    // ──────────────────────────────────────────────
     @Transactional
-    public PointResponse cancelUse(PointCancelUseRequest request) {
+    public PointResponse revertUse(PointCancelUseRequest request) {
         PointWallet wallet = getOrCreateWalletWithLock(request.memberId());
         long nextSeq = wallet.getLastSequenceNum() + 1;
 
@@ -143,7 +125,7 @@ public class PointFacadeService {
                 request.memberId(),
                 request.amount(),
                 request.pointKey(),
-                request.pointKey(),     // 사용취소: 자기 자신이 원본 참조
+                request.pointKey(),
                 nextSeq,
                 PointTransactionType.CANCEL_USE,
                 PointSource.ORDER,
@@ -155,32 +137,25 @@ public class PointFacadeService {
         wallet.apply(tx, policyManager.getMaxFreePointHoldingLimit());
         walletRepository.save(wallet);
 
-        logger.info("[SYNC_CANCEL_USE] PointKey: {}, OrderId: {}, RefundAmount: {}, Balance: {}",
+        logger.info("[ADMIN_REVERT_USE] PointKey: {}, OrderId: {}, RefundedAmount: {}, NewBalance: {}",
                 tx.getPointKey(), request.orderId(), tx.getAmount(), wallet.getBalance());
 
-        return toResponse(tx, wallet, "사용이 취소되었습니다.");
+        return toResponse(tx, wallet, "Use transaction reverted successfully.");
     }
 
-    // ──────────────────────────────────────────────
-    // 잔액 조회
-    // ──────────────────────────────────────────────
     @Transactional(readOnly = true)
     public PointResponse getBalance(Long memberId) {
         PointWallet wallet = walletRepository.findByMemberId(memberId)
                 .orElseThrow(() -> new PointLedgerException(PointErrorCode.ASSET_NOT_FOUND,
-                        "지갑이 존재하지 않습니다. MemberId: " + memberId));
+                        "Wallet not found for MemberId: " + memberId));
 
         return PointResponse.builder()
                 .memberId(wallet.getMemberId())
                 .balance(wallet.getBalance())
                 .type("BALANCE")
-                .message("현재 잔액을 조회했습니다.")
+                .message("Balance retrieved successfully.")
                 .build();
     }
-
-    // ──────────────────────────────────────────────
-    // Private helpers
-    // ──────────────────────────────────────────────
 
     private PointWallet getOrCreateWalletWithLock(Long memberId) {
         try {
@@ -196,7 +171,7 @@ public class PointFacadeService {
         } catch (DataIntegrityViolationException e) {
             return walletRepository.findByMemberIdWithLock(memberId)
                     .orElseThrow(() -> new PointLedgerException(PointErrorCode.INTERNAL_SERVER_ERROR,
-                            "지갑 생성 충돌 복구 실패. MemberId: " + memberId));
+                            "Failed to recover from wallet creation conflict. MemberId: " + memberId));
         }
     }
 

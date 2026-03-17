@@ -1,4 +1,4 @@
-package io.github.sukjoonhong.pointledger.application.api.v1.dto;
+package io.github.sukjoonhong.pointledger.domain.dto;
 
 import io.github.sukjoonhong.pointledger.domain.type.PointSource;
 import jakarta.validation.constraints.Min;

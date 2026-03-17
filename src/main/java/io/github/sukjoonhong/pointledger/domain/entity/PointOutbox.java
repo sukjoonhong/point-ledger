@@ -28,7 +28,8 @@ public class PointOutbox extends BaseAuditEntity {
     @Column(nullable = false)
     private OutboxStatus status; // PENDING, PROCESSED, FAILED
 
-    private Integer retryCount;
+    @Builder.Default
+    private Integer retryCount = 0;
 
     @Getter
     public enum OutboxStatus {

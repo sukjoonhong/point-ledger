@@ -25,15 +25,19 @@ public class PointOutboxService {
     private final PointEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
-    public void createReEarnOutbox(PointWallet wallet, PointTransaction tx, long amount) {
+    public void createReEarnOutbox(PointWallet wallet, PointTransaction tx, long amount, long sequenceNum) {
+        final Long memberId = wallet.getMemberId();
         String newKey = "RE-" + UUID.randomUUID().toString().substring(0, 8);
+
         PointCommand command = PointCommand.builder()
-                .memberId(wallet.getMemberId())
+                .memberId(memberId)
                 .amount(amount)
                 .pointKey(newKey)
+                .sequenceNum(sequenceNum)
                 .type(PointTransactionType.RE_EARN)
                 .source(PointSource.SYSTEM)
-                .description("Compensation for expired asset. Original OrderID: " + tx.getOrderId())
+                .description(String.format("Compensation for expired asset. [Original Order: %s, Key: %s]",
+                        tx.getOrderId(), tx.getPointKey()))
                 .build();
 
         try {
@@ -41,10 +45,12 @@ public class PointOutboxService {
                     .eventType("RE_EARN")
                     .payload(objectMapper.writeValueAsString(command))
                     .status(PointOutbox.OutboxStatus.PENDING)
+                    .retryCount(0)
                     .build();
 
             outboxRepository.save(outbox);
             eventPublisher.publish(new PointOutboxCapturedEvent(outbox.getId()));
+
         } catch (JsonProcessingException e) {
             throw new PointLedgerException(PointErrorCode.INTERNAL_SERVER_ERROR, "Failed to serialize RE_EARN");
         }

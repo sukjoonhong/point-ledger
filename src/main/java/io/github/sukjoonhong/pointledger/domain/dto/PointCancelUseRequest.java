@@ -1,4 +1,4 @@
-package io.github.sukjoonhong.pointledger.application.api.v1.dto;
+package io.github.sukjoonhong.pointledger.domain.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -10,5 +10,6 @@ public record PointCancelUseRequest(
         @NotNull Long memberId,
         @NotNull @Min(1) Long amount,
         @NotBlank String pointKey,
-        @NotBlank String orderId
+        @NotBlank String orderId,
+        @NotBlank String originalPointKey
 ) {}

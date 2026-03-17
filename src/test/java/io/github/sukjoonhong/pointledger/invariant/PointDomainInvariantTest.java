@@ -24,8 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 class PointDomainInvariantTest {
-
-    // [추가] 모든 속성 테스트에서 공통으로 사용할 고정 시간 프로바이더 생성
     private final BusinessTimeProvider timeProvider = createMockTimeProvider();
 
     private BusinessTimeProvider createMockTimeProvider() {
@@ -84,7 +82,10 @@ class PointDomainInvariantTest {
             @ForAll @LongRange(min = 1) long earnAmount
     ) {
         PointWallet wallet = PointWallet.builder().id(1L).build();
-        PointTransaction tx = PointTransaction.builder().amount(earnAmount).build();
+        PointTransaction tx = PointTransaction.builder()
+                .amount(earnAmount)
+                .source(io.github.sukjoonhong.pointledger.domain.type.PointSource.ORDER)
+                .build();
 
         if (earnAmount < minLimit || earnAmount > maxLimit) {
             assertThatThrownBy(() -> PointAsset.createActiveAsset(wallet, tx, minLimit, maxLimit, 30, timeProvider))

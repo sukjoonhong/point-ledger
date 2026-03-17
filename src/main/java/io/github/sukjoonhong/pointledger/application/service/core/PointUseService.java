@@ -9,6 +9,7 @@ import io.github.sukjoonhong.pointledger.domain.exception.PointLedgerException;
 import io.github.sukjoonhong.pointledger.repository.PointAssetRepository;
 import io.github.sukjoonhong.pointledger.repository.PointUsageDetailRepository;
 import io.github.sukjoonhong.pointledger.support.BusinessTimeProvider;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +28,7 @@ public class PointUseService {
     private final PointAssetManager assetManager;
     private final PointOutboxService outboxService;
     private final BusinessTimeProvider timeProvider;
+    private final EntityManager entityManager;
 
     private static final Sort DEDUCTION_SORT = Sort.by(Sort.Direction.ASC, "sourcePriority", "expirationDate", "id");
     private static final Sort REFUND_SORT = Sort.by(Sort.Direction.DESC, "id");
@@ -53,9 +55,11 @@ public class PointUseService {
                 id -> assetRepository.findById(id).orElseThrow(() -> new PointLedgerException(PointErrorCode.ASSET_NOT_FOUND)),
                 timeProvider);
 
+        long nextSequence = tx.getSequenceNum() + 1;
+
         for (var item : refundItems) {
             if (item.expired()) {
-                outboxService.createReEarnOutbox(wallet, tx, item.amount());
+                outboxService.createReEarnOutbox(wallet, tx, item.amount(), nextSequence++);
             } else {
                 item.asset().restore(item.amount());
                 assetRepository.save(item.asset());

@@ -2,8 +2,10 @@ package io.github.sukjoonhong.pointledger.repository;
 
 import io.github.sukjoonhong.pointledger.domain.entity.PointWallet;
 import jakarta.persistence.LockModeType;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,6 +19,10 @@ public interface PointWalletRepository extends JpaRepository<PointWallet, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT w FROM PointWallet w WHERE w.memberId = :memberId")
     Optional<PointWallet> findByMemberIdWithLock(@Param("memberId") Long memberId);
+
+    @Modifying
+    @Transactional
+    void deleteByMemberId(Long memberId);
 
     Optional<PointWallet> findByMemberId(@Param("memberId") Long memberId);
 }

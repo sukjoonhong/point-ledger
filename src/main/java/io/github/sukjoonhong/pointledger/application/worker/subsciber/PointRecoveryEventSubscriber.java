@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
-@Profile("worker & !scheduler")
+@Profile("worker")
 @Service
 @RequiredArgsConstructor
 public class PointRecoveryEventSubscriber implements PointEventSubscriber<PointWalletRecoveryEvent> {
